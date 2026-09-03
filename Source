@@ -1779,7 +1779,7 @@ function Window:_openKeybindModeMenu(entry)
         choice.MouseLeave:Connect(function() choice.BackgroundColor3 = entry.Mode == modeId and Theme.Selected or Theme.Surface end)
         choice.MouseButton1Click:Connect(function()
             entry.Mode = modeId
-            if mode == "always" then entry.SetActive(true) elseif mode == "hold" then entry.SetActive(false) end
+            if mode == "always" then entry.SetActive(true) elseif mode == "hold" or mode == "click" then entry.SetActive(false) end
             self:_refreshKeybindOverlay()
             self:ClosePopup()
         end)
@@ -1865,7 +1865,7 @@ function Section:CreateCheckbox(config)
             Size = w.Value and UDim2.fromOffset(14, 14) or UDim2.fromOffset(10, 10),
         }):Play()
         boxStroke.Color = Theme.Border; boxStroke.Transparency = 0
-        if keyEntry then keyEntry.Active = w.Value and keyEntry.Mode ~= "HOLD"; popupWindow:_refreshKeybindOverlay(keyEntry) end
+        if keyEntry then keyEntry.Active = w.Value and keyEntry.Mode ~= "HOLD" and keyEntry.Mode ~= "CLICK"; popupWindow:_refreshKeybindOverlay(keyEntry) end
         if not silent and config.Callback then config.Callback(w.Value) end
     end
     if keyEntry then
