@@ -10,6 +10,21 @@ local UI = loadstring(game:HttpGet("https://fal.lol/raw/5WLgR7ThiV"))()
 
 `UI.lua` returns the library table. The library writes its bundled icon and theme assets through the executor asset functions when a window is created. A runtime with `writefile`, `makefolder`, and either `getcustomasset` or `getsynasset` is required for local image assets.
 
+## Short Creation Example
+
+```lua
+local window = UI:CreateWindow({
+    Title = "Rimuru.temp",
+    Theme = "Rimuru Hub",
+    Width = 680,
+    Height = 460,
+})
+
+local tab = window:CreateTab("Main", "target")
+local section = tab:CreateSection("General", {Column = "left"})
+section:CreateCheckbox({Name = "Enabled", Default = true})
+```
+
 ## Library API
 
 ### `UI:CreateWindow(config)`
