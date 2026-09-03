@@ -5,8 +5,33 @@
   local RunService = game:GetService("RunService")
   local HttpService = game:GetService("HttpService")
   local MarketplaceService = game:GetService("MarketplaceService")
+  local GuiService = game:GetService("GuiService")
+  local ContextActionService = game:GetService("ContextActionService")
   local Player = Players.LocalPlayer
-  local PlayerGui = Player:WaitForChild("PlayerGui")
+  local CoreGui = game:GetService("CoreGui")
+  local function NormalizeGuiParent(candidate)
+      if typeof(candidate) ~= "Instance" then return nil end
+      if candidate:IsA("ScreenGui") then return candidate.Parent end
+      return candidate
+  end
+  local function ResolveGuiParent()
+      if type(gethui) == "function" then
+          local ok, hidden = pcall(gethui)
+          local parent = ok and NormalizeGuiParent(hidden)
+          if parent then return parent end
+      end
+      if type(get_hidden_gui) == "function" then
+          local ok, hidden = pcall(get_hidden_gui)
+          local parent = ok and NormalizeGuiParent(hidden)
+          if parent then return parent end
+      end
+      return CoreGui
+  end
+  local GuiParent = ResolveGuiParent()
+  local function IsRobloxMenuOpen()
+      local ok, isOpen = pcall(function() return GuiService.MenuIsOpen end)
+      return ok and isOpen == true
+  end
   local function DetectExecutor()
       local name
       if type(identifyexecutor) == "function" then
@@ -1074,14 +1099,14 @@
   function Library:ShowLoader(config)
       config = config or {}
       WriteIconAssets(config.IconData or DefaultIconData)
-      local old = PlayerGui:FindFirstChild("RimuruUI_Loader")
+      local old = GuiParent:FindFirstChild("RimuruUI_Loader")
       if old then old:Destroy() end
       local duration = math.max(tonumber(config.Duration) or 1.15, .2)
       local requestedTheme = tostring(config.Theme or CurrentThemeName or "Rimuru Dark")
       local loaderPalette = ThemePalettes[requestedTheme] or RimuruDark
       local savedTheme = copyTheme(Theme)
       for key, value in pairs(loaderPalette) do Theme[key] = value end
-      local gui = New("ScreenGui", {Name = "RimuruUI_Loader", DisplayOrder = 150, IgnoreGuiInset = true, ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling}, PlayerGui)
+      local gui = New("ScreenGui", {Name = "RimuruUI_Loader", DisplayOrder = 1000001, IgnoreGuiInset = true, ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling}, GuiParent)
       local loaderOutline = OutlinePanel(gui, {AnchorPoint = Vector2.new(.5, .5), Position = UDim2.fromScale(.5, .5), Size = UDim2.fromOffset(308, 130), ZIndex = 1}, 16)
       local panel = New("Frame", {AnchorPoint = Vector2.new(.5, .5), BackgroundColor3 = Theme.Surface, BackgroundTransparency = Theme.SurfaceTransparency or 0, BorderSizePixel = 0, Position = UDim2.fromScale(.5, .5), RimuruThemeRole = "FloatingSurface", Size = UDim2.fromOffset(300, 122), ZIndex = 2}, gui)
       Corner(panel, 12)
@@ -1105,10 +1130,10 @@
       config = config or {}
       WriteIconAssets(config.IconData or DefaultIconData)
       WriteIconAssets(DefaultThemeAssetData)
-      local old = Player:WaitForChild("PlayerGui"):FindFirstChild("RimuruUI_Internal")
+      local old = GuiParent:FindFirstChild("RimuruUI_Internal")
       if old then old:Destroy() end
-      local gui = New("ScreenGui", {Name = "RimuruUI_Internal", DisplayOrder = 100, IgnoreGuiInset = true,
-          ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling}, Player.PlayerGui)
+      local gui = New("ScreenGui", {Name = "RimuruUI_Internal", DisplayOrder = 1000000, IgnoreGuiInset = true,
+          ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling}, GuiParent)
     local requestedTheme = tostring(config.Theme or "Rimuru Dark")
     local window = setmetatable({Gui = gui, Tabs = {}, Config = config, GameName = DetectGameName(), ThemeName = ThemePalettes[requestedTheme] and requestedTheme or "Rimuru Dark", ConfigFolder = tostring(config.ConfigFolder or ""), ConfigName = tostring(config.ConfigName or ""), ConfigAutoSave = config.AutoSave == true, ConfigNames = {}, FloatingIslandEnabled = config.FloatingIsland ~= false, Visible = true, Keybinds = {}, KeybindConnections = {}}, Window)
       window:SetTheme(window.ThemeName)
@@ -1129,6 +1154,37 @@
       local outerScale = New("UIScale", {Scale = 1}, outer)
       window.Root, window.Outer, window.RootScale, window.OuterScale, window.NormalWidth, window.NormalHeight = root, outer, rootScale, outerScale, width, height; window.NormalPosition = root.Position
       Corner(root, 12)
+      window.MenuInputAction = "RimuruUI_PreserveEscapeMenu"
+      ContextActionService:BindActionAtPriority(window.MenuInputAction, function(_, state, input)
+          if state ~= Enum.UserInputState.Begin or not IsRobloxMenuOpen() then return Enum.ContextActionResult.Pass end
+          if not window.Root or not window.Root.Parent or not window.Root.Visible then return Enum.ContextActionResult.Pass end
+          local point = input.Position
+          local position, size = window.Root.AbsolutePosition, window.Root.AbsoluteSize
+          if point.X >= position.X and point.X <= position.X + size.X and point.Y >= position.Y and point.Y <= position.Y + size.Y then
+              return Enum.ContextActionResult.Sink
+          end
+          return Enum.ContextActionResult.Pass
+      end, false, Enum.ContextActionPriority.High.Value + 100, Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2, Enum.UserInputType.Touch)
+      window.UiMouseBehavior = nil
+      window.UiMouseIconEnabled = nil
+      local function UpdateUiMouse()
+          local uiOpen = window.Visible == true and window.Minimized ~= true and window.Root and window.Root.Parent and window.Root.Visible
+          if uiOpen then
+              if window.UiMouseBehavior == nil then
+                  window.UiMouseBehavior = UIS.MouseBehavior
+                  window.UiMouseIconEnabled = UIS.MouseIconEnabled
+              end
+              UIS.MouseBehavior = Enum.MouseBehavior.Default
+              UIS.MouseIconEnabled = true
+          elseif window.UiMouseBehavior ~= nil then
+              UIS.MouseBehavior = window.UiMouseBehavior
+              UIS.MouseIconEnabled = window.UiMouseIconEnabled
+              window.UiMouseBehavior = nil
+              window.UiMouseIconEnabled = nil
+          end
+      end
+      window.UiMouseConnection = RunService.RenderStepped:Connect(UpdateUiMouse)
+      UpdateUiMouse()
       window:_createAtmosphere()
       local railWidth = config.RailWidth or math.floor(width * 0.27)
       local rail = New("Frame", {Active = true, BackgroundColor3 = Theme.Sidebar or Theme.Surface, BackgroundTransparency = Theme.SidebarTransparency or 0, BorderSizePixel = 0, RimuruThemeRole = "Sidebar", Size = UDim2.new(0, railWidth, 1, 0), ZIndex = 3}, root)
@@ -1649,6 +1705,14 @@ function Window:Destroy()
       self:ClosePopup()
       if self.PendingKeybind then self.PendingKeybind.Cancel(); self.PendingKeybind = nil end
       if self.PopupInput then self.PopupInput:Disconnect(); self.PopupInput = nil end
+      if self.MenuInputAction then ContextActionService:UnbindAction(self.MenuInputAction); self.MenuInputAction = nil end
+      if self.UiMouseConnection then self.UiMouseConnection:Disconnect(); self.UiMouseConnection = nil end
+      if self.UiMouseBehavior ~= nil then
+          UIS.MouseBehavior = self.UiMouseBehavior
+          UIS.MouseIconEnabled = self.UiMouseIconEnabled
+          self.UiMouseBehavior = nil
+          self.UiMouseIconEnabled = nil
+      end
     if self.KeybindOverlay and self.KeybindOverlay.DragTween then self.KeybindOverlay.DragTween:Cancel(); self.KeybindOverlay.DragTween = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragOuterTween then self.KeybindOverlay.DragOuterTween:Cancel(); self.KeybindOverlay.DragOuterTween = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragConnections then
