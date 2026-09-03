@@ -5,7 +5,7 @@ This document describes the current `RimuruUIInternal/UI.lua` API and the exampl
 ## Loading
 
 ```lua
-local UI = loadstring(game:HttpGet("https://fal.lol/raw/5WLgR7ThiV"))()
+local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/falisc/RimuruLib/refs/heads/main/Source"))()
 ```
 
 `UI.lua` returns the library table. The library writes its bundled icon and theme assets through the executor asset functions when a window is created. A runtime with `writefile`, `makefolder`, and either `getcustomasset` or `getsynasset` is required for local image assets.
