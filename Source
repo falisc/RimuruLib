@@ -75,10 +75,16 @@
   end
   local Theme = copyTheme(RimuruDark)
   local CurrentThemeName = "Rimuru Dark"
-  local Fonts = {
+  local PreviousFonts = {
       Regular = Font.fromEnum(Enum.Font.GothamBold),
       Bold = Font.fromEnum(Enum.Font.GothamBold),
       Heading = Font.fromEnum(Enum.Font.GothamBold),
+  }
+  local InterFontId = 12187365364
+  local Fonts = {
+      Regular = Font.fromId(InterFontId, Enum.FontWeight.Bold, Enum.FontStyle.Normal),
+      Bold = Font.fromId(InterFontId, Enum.FontWeight.Bold, Enum.FontStyle.Normal),
+      Heading = Font.fromId(InterFontId, Enum.FontWeight.Bold, Enum.FontStyle.Normal),
   }
 
   local function New(className, props, parent)
@@ -271,7 +277,7 @@
       return ok and resolved or nil
   end
   local function MakeIcon(parent, kind, assets, size, tint)
-      kind = string.lower(tostring(kind or ""))
+      kind = string.lower(tostring(kind or "dot"))
       size = size or 16
        local imageTint = kind == "logo" and Color3.new(1, 1, 1) or (tint == false and Theme.Text or (tint == true and Theme.Text or (typeof(tint) == "Color3" and tint or Theme.Muted)))
       local asset = (type(assets) == "table" and assets[kind]) or DefaultIconAssets[kind]
@@ -283,10 +289,23 @@
            image:SetAttribute("RimuruIconTintMode", kind == "logo" and "logo" or (tint == false or tint == true) and "text" or (typeof(tint) == "Color3" and "explicit" or "muted"))
            return image
        end
-       return nil
+       if kind == "info" then
+           local icon = New("Frame", {BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromOffset(size, size), ZIndex = 4}, parent)
+           Corner(icon, size / 2); Outline(icon, imageTint)
+           IconPart(icon, {BackgroundColor3 = imageTint, Position = UDim2.fromOffset(size / 2 - 1, 5), Size = UDim2.fromOffset(2, 2), ZIndex = 5})
+           IconPart(icon, {BackgroundColor3 = imageTint, Position = UDim2.fromOffset(size / 2 - 1, 9), Size = UDim2.fromOffset(2, size - 12), ZIndex = 5})
+           return icon
+       elseif kind == "terminal" then
+           local icon = New("Frame", {BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromOffset(size, size), ZIndex = 4}, parent)
+           local upper = IconPart(icon, {BackgroundColor3 = imageTint, Position = UDim2.fromOffset(3, size / 2 - 4), Size = UDim2.fromOffset(size * .42, 2), Rotation = 32, ZIndex = 5})
+           local lower = IconPart(icon, {BackgroundColor3 = imageTint, Position = UDim2.fromOffset(3, size / 2 + 1), Size = UDim2.fromOffset(size * .42, 2), Rotation = -32, ZIndex = 5})
+           Corner(upper, 1); Corner(lower, 1)
+           local prompt = IconPart(icon, {BackgroundColor3 = imageTint, Position = UDim2.fromOffset(size * .55, size - 4), Size = UDim2.fromOffset(size * .35, 2), ZIndex = 5}); Corner(prompt, 1)
+           return icon
+       end
+       return New("Frame", {BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromOffset(size, size), ZIndex = 4}, parent)
   end
   local function SetIconColor(icon, colour)
-      if not icon then return end
       if icon:IsA("ImageLabel") and icon:GetAttribute("RimuruIconImage") then icon.ImageColor3 = colour end
       for _, child in ipairs(icon:GetDescendants()) do
           if child:IsA("UIStroke") then child.Color = colour
@@ -1375,11 +1394,11 @@
       end)
       local footer = New("Frame", {BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 298), Size = UDim2.new(1, 0, 0, 44)}, home)
       local credits = New("Frame", {BackgroundColor3 = Theme.Card, BorderSizePixel = 0, RimuruThemeRole = "Card", Size = UDim2.new(.66, -6, 1, 0)}, footer); Corner(credits, 9); Outline(credits, Theme.Divider)
-      local creditsIcon = MakeIcon(credits, "target", nil, 18, true); creditsIcon.Position = UDim2.fromOffset(11, 13); creditsIcon.ZIndex = 4
+      local creditsIcon = MakeIcon(credits, "info", nil, 18, true); creditsIcon.Position = UDim2.fromOffset(11, 13); creditsIcon.ZIndex = 4
       local creditsTitle = Label(credits, "Rimuru.temp Script Hub", 10, Theme.Text, Fonts.Bold); creditsTitle.Position = UDim2.fromOffset(34, 5); creditsTitle.Size = UDim2.new(1, -44, 0, 17); creditsTitle.TextTruncate = Enum.TextTruncate.AtEnd
       local creditsDetail = Label(credits, "Owned by @catscure and @0klayt", 9, Theme.Muted, Fonts.Regular); creditsDetail.Position = UDim2.fromOffset(34, 22); creditsDetail.Size = UDim2.new(1, -44, 0, 15); creditsDetail.TextTruncate = Enum.TextTruncate.AtEnd
       local executor = New("Frame", {BackgroundColor3 = Theme.Card, BorderSizePixel = 0, Position = UDim2.new(.66, 6, 0, 0), RimuruThemeRole = "Card", Size = UDim2.new(.34, -6, 1, 0)}, footer); Corner(executor, 9); Outline(executor, Theme.Divider)
-      local executorIcon = MakeIcon(executor, "lightning", nil, 18, true); executorIcon.Position = UDim2.fromOffset(11, 13); executorIcon.ZIndex = 4
+      local executorIcon = MakeIcon(executor, "terminal", nil, 18, true); executorIcon.Position = UDim2.fromOffset(11, 13); executorIcon.ZIndex = 4
       local executorTitle = Label(executor, "Executor", 10, Theme.Text, Fonts.Bold); executorTitle.Position = UDim2.fromOffset(34, 5); executorTitle.Size = UDim2.new(1, -42, 0, 17)
        local executorDetail = Label(executor, DetectExecutor(), 9, Theme.Muted, Fonts.Regular); executorDetail.Position = UDim2.fromOffset(34, 22); executorDetail.Size = UDim2.new(1, -42, 0, 15); executorDetail.TextTruncate = Enum.TextTruncate.AtEnd
    end
@@ -1547,7 +1566,7 @@
    end
   function Window:CreateTab(name, icon, config)
       config = config or {}
-      local tab = setmetatable({Name = name, Icon = icon, Sections = {}, Window = self}, Tab); table.insert(self.Tabs, tab)
+      local tab = setmetatable({Name = name, Icon = icon or "dot", Sections = {}, Window = self}, Tab); table.insert(self.Tabs, tab)
       local parent = config.Bottom and self.BottomNav or (config.Hardcoded and self.HomeNav or self.Nav)
       if config.Group and not config.Bottom and config.Group ~= self.LastGroup then
           local group = Label(self.Nav, string.upper(config.Group), 8, Theme.Muted, Fonts.Bold); group.Size = UDim2.new(1, 0, 0, 18); group.LayoutOrder = #self.Tabs * 2 - 1; self.LastGroup = config.Group
@@ -1555,8 +1574,7 @@
       local button = New("TextButton", {Active = true, AutoButtonColor = false, BackgroundColor3 = Theme.Surface, BackgroundTransparency = Theme.SurfaceTransparency or 0, BorderSizePixel = 0, FontFace = Fonts.Heading, LayoutOrder = config.Bottom and 1 or #self.Tabs * 2, RimuruThemeRole = "FrostedTab", Size = UDim2.new(1, 0, 0, 32), Text = "", TextColor3 = Theme.Muted, TextSize = 10, ZIndex = 4}, parent)
       Corner(button, 9)
       local text = Label(button, name, 10, Theme.Muted, Fonts.Heading); text.Position = UDim2.fromOffset(30, 0); text.Size = UDim2.new(1, -34, 1, 0); text.ZIndex = 6
-      local icon = tab.Icon and MakeIcon(button, tab.Icon, nil) or nil
-      if icon then icon.Position = UDim2.fromOffset(7, 8); icon.ZIndex = 5 end
+      local icon = MakeIcon(button, tab.Icon, nil); icon.Position = UDim2.fromOffset(7, 8); icon.ZIndex = 5
       local tabStroke = Outline(button, Theme.Divider); tabStroke.Transparency = 1
       if name == "Home Page" and not config.Bottom then
           New("Frame", {BackgroundColor3 = Theme.Divider, BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, 3), Size = UDim2.new(1, 0, 0, 1), ZIndex = 3}, button)
@@ -1591,7 +1609,7 @@
            end
           candidate.TextLabel.TextColor3 = active and Theme.Text or Theme.Muted
           if candidate.TabStroke then candidate.TabStroke.Transparency = active and 0 or 1 end
-          if candidate.IconLabel then SetIconColor(candidate.IconLabel, active and Theme.Text or Theme.Muted) end
+          SetIconColor(candidate.IconLabel, active and Theme.Text or Theme.Muted)
           if candidate.Container then candidate.Container.Visible = active end
       end
   end
@@ -1739,9 +1757,7 @@ function Window:Destroy()
   function Section:CreateButton(config)
       config = type(config) == "string" and {Name = config} or config or {}; local w = self:_widget(config.Name or "Button"); local b = Action(w.Root, config.Icon and "" or config.Text or "Click", 26); b.Position = UDim2.new(1, -112, 0, 4); b.Size = UDim2.fromOffset(112, 26)
       if config.Icon then
-          local icon = MakeIcon(b, config.Icon, nil, 18, false)
-          if icon then icon.AnchorPoint = Vector2.new(.5, .5); icon.Position = UDim2.new(.5, 0, .5, 0); icon.ZIndex = 5 end
-          w.Icon = icon
+          local icon = MakeIcon(b, config.Icon, nil, 18, false); icon.AnchorPoint = Vector2.new(.5, .5); icon.Position = UDim2.new(.5, 0, .5, 0); icon.ZIndex = 5; w.Icon = icon
       end
       b.MouseButton1Click:Connect(function() if config.Callback then config.Callback() end end); w.Button = b; return w
   end
