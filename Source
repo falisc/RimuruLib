@@ -1310,22 +1310,19 @@
       end, false, Enum.ContextActionPriority.High.Value + 100, Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2, Enum.UserInputType.Touch)
       window.UiMouseBehavior = nil
       window.UiMouseIconEnabled = nil
-      local function UpdateUiMouse()
-          local uiOpen = window.Visible == true and window.Minimized ~= true and window.Root and window.Root.Parent and window.Root.Visible
-          if uiOpen then
-              if window.UiMouseBehavior == nil then
-                  window.UiMouseBehavior = UIS.MouseBehavior
-                  window.UiMouseIconEnabled = UIS.MouseIconEnabled
-              end
-              UIS.MouseBehavior = Enum.MouseBehavior.Default
-              UIS.MouseIconEnabled = true
-          elseif window.UiMouseBehavior ~= nil then
-              UIS.MouseBehavior = window.UiMouseBehavior
-              UIS.MouseIconEnabled = window.UiMouseIconEnabled
-              window.UiMouseBehavior = nil
-              window.UiMouseIconEnabled = nil
-          end
-      end
+       local function UpdateUiMouse()
+           local uiOpen = window.Visible == true and window.Minimized ~= true and window.Root and window.Root.Parent and window.Root.Visible
+           if uiOpen then
+               if window.UiMouseIconEnabled == nil then
+                   window.UiMouseIconEnabled = UIS.MouseIconEnabled
+               end
+               UIS.MouseBehavior = Enum.MouseBehavior.Default
+               UIS.MouseIconEnabled = true
+           elseif window.UiMouseIconEnabled ~= nil then
+               UIS.MouseIconEnabled = window.UiMouseIconEnabled
+               window.UiMouseIconEnabled = nil
+           end
+       end
       window.UiMouseBindName = "RimuruUI_MouseState"
       pcall(function() RunService:UnbindFromRenderStep(window.UiMouseBindName) end)
       local mouseBound = pcall(function() RunService:BindToRenderStep(window.UiMouseBindName, Enum.RenderPriority.Last.Value, UpdateUiMouse) end)
@@ -1619,11 +1616,7 @@
           local rowTitle = Label(row, title, 10, Theme.Text, Fonts.Bold); rowTitle.Position = UDim2.fromOffset(16, 0); rowTitle.Size = UDim2.new(1, -20, 0, 17); rowTitle.TextTruncate = Enum.TextTruncate.AtEnd
           local rowDetail = Label(row, detail, 9, Theme.Muted, Fonts.Regular); rowDetail.Position = UDim2.fromOffset(16, 16); rowDetail.Size = UDim2.new(1, -20, 0, 16); rowDetail.TextTruncate = Enum.TextTruncate.AtEnd
       end
-      changelogRow("Interface rebuilt", "Liquid glass controls and smoother motion")
-      changelogRow("Input cleanup", "Keybind state and overlay behavior refined")
-      changelogRow("Atmosphere pass", "Rain and darkening now follow the UI state")
-      changelogRow("Floating island", "Notifications and minimized state share one surface")
-      changelogRow("Config refresh", "Theme and widget values persist between sessions")
+       changelogRow("Internal Script Released", "Violence District internal port is now available")
       local join = Action(changelog, "Join Discord", 28); join.Position = UDim2.fromOffset(12, 174); join.Size = UDim2.new(1, -24, 0, 28); join.TextColor3 = Theme.Muted
       join.MouseButton1Click:Connect(function()
           if type(setclipboard) == "function" then pcall(setclipboard, "discord.gg/rimuruhub") end
@@ -1896,10 +1889,8 @@ function Window:Destroy()
        if self.UiMouseConnection then self.UiMouseConnection:Disconnect(); self.UiMouseConnection = nil end
        if self.UiMouseBindName then pcall(function() RunService:UnbindFromRenderStep(self.UiMouseBindName) end); self.UiMouseBindName = nil end
       if self.SideMouseConnection then self.SideMouseConnection:Disconnect(); self.SideMouseConnection = nil end
-      if self.UiMouseBehavior ~= nil then
-          UIS.MouseBehavior = self.UiMouseBehavior
+      if self.UiMouseIconEnabled ~= nil then
           UIS.MouseIconEnabled = self.UiMouseIconEnabled
-          self.UiMouseBehavior = nil
           self.UiMouseIconEnabled = nil
       end
     if self.KeybindOverlay and self.KeybindOverlay.DragTween then self.KeybindOverlay.DragTween:Cancel(); self.KeybindOverlay.DragTween = nil end
