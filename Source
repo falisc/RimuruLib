@@ -1309,19 +1309,26 @@
           return Enum.ContextActionResult.Pass
       end, false, Enum.ContextActionPriority.High.Value + 100, Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2, Enum.UserInputType.Touch)
       window.UiMouseBehavior = nil
+      window.UiMouseWasOpen = false
       window.UiMouseIconEnabled = nil
-       local function UpdateUiMouse()
+      local function UpdateUiMouse()
            local uiOpen = window.Visible == true and window.Minimized ~= true and window.Root and window.Root.Parent and window.Root.Visible
            if uiOpen then
-               if window.UiMouseIconEnabled == nil then
+               if not window.UiMouseWasOpen then
+                   window.UiMouseBehavior = UIS.MouseBehavior
                    window.UiMouseIconEnabled = UIS.MouseIconEnabled
                end
                UIS.MouseBehavior = Enum.MouseBehavior.Default
                UIS.MouseIconEnabled = true
-           elseif window.UiMouseIconEnabled ~= nil then
-               UIS.MouseIconEnabled = window.UiMouseIconEnabled
+           elseif window.UiMouseWasOpen then
+               if window.UiMouseBehavior ~= nil then
+                   UIS.MouseBehavior = window.UiMouseBehavior
+               end
+               if window.UiMouseIconEnabled ~= nil then UIS.MouseIconEnabled = window.UiMouseIconEnabled end
+               window.UiMouseBehavior = nil
                window.UiMouseIconEnabled = nil
            end
+           window.UiMouseWasOpen = uiOpen == true
        end
       window.UiMouseBindName = "RimuruUI_MouseState"
       pcall(function() RunService:UnbindFromRenderStep(window.UiMouseBindName) end)
@@ -1889,10 +1896,15 @@ function Window:Destroy()
        if self.UiMouseConnection then self.UiMouseConnection:Disconnect(); self.UiMouseConnection = nil end
        if self.UiMouseBindName then pcall(function() RunService:UnbindFromRenderStep(self.UiMouseBindName) end); self.UiMouseBindName = nil end
       if self.SideMouseConnection then self.SideMouseConnection:Disconnect(); self.SideMouseConnection = nil end
+       if self.UiMouseWasOpen and self.UiMouseBehavior ~= nil then
+           UIS.MouseBehavior = self.UiMouseBehavior
+      end
       if self.UiMouseIconEnabled ~= nil then
           UIS.MouseIconEnabled = self.UiMouseIconEnabled
+          self.UiMouseBehavior = nil
           self.UiMouseIconEnabled = nil
       end
+      self.UiMouseWasOpen = false
     if self.KeybindOverlay and self.KeybindOverlay.DragTween then self.KeybindOverlay.DragTween:Cancel(); self.KeybindOverlay.DragTween = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragOuterTween then self.KeybindOverlay.DragOuterTween:Cancel(); self.KeybindOverlay.DragOuterTween = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragConnections then
