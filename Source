@@ -143,6 +143,29 @@
   local function List(parent, padding)
       return New("UIListLayout", {Padding = UDim.new(0, padding or 4), SortOrder = Enum.SortOrder.LayoutOrder}, parent)
   end
+  local function isMouseBindingName(name)
+      name = tostring(name or "")
+      return string.match(name, "^MouseButton[1-5]$") ~= nil or name == "MouseButtonX1" or name == "MouseButtonX2"
+  end
+  local function isBindableName(name)
+      name = tostring(name or "")
+      if name == "Unbound" then return true end
+      if isMouseBindingName(name) then return true end
+      return Enum.KeyCode[name] ~= nil
+  end
+  local function bindableInputName(input)
+      if not input then return nil end
+      local inputType = input.UserInputType
+      if inputType == Enum.UserInputType.Keyboard then
+          return input.KeyCode and input.KeyCode.Name or nil
+      end
+      local inputTypeName = inputType and inputType.Name or ""
+      if isMouseBindingName(inputTypeName) then return inputTypeName end
+      return nil
+  end
+  local function isMouseBindableInput(input)
+      return isMouseBindingName(input and input.UserInputType and input.UserInputType.Name or "")
+  end
   local function PopupBlocks(button)
       local gui = button and button:FindFirstAncestorOfClass("ScreenGui")
       local layer = gui and gui:FindFirstChild("RimuruPopupLayer")
@@ -485,13 +508,15 @@
 
   function Window:_captureConfig()
       local values = {}
-      for _, tab in ipairs(self.Tabs or {}) do
-          for _, section in ipairs(tab.Sections or {}) do
-              for _, widget in ipairs(section.Widgets or {}) do
+       for tabIndex, tab in ipairs(self.Tabs or {}) do
+           for sectionIndex, section in ipairs(tab.Sections or {}) do
+               for widgetIndex, widget in ipairs(section.Widgets or {}) do
                   if not widget.ConfigIgnore then
                       local snapshot
-                      if widget.Keybind then
-                          snapshot = {Kind = "Keybind", Enabled = widget.Box and widget.Value == true or nil, Key = tostring(widget.Keybind.KeyName or "Unbound"), Mode = tostring(widget.Keybind.Mode or "TOGGLE")}
+                       if widget.Keybind then
+                           local enabled = nil
+                           if widget.Box then enabled = widget.Value == true end
+                           snapshot = {Kind = "Keybind", Enabled = enabled, Key = tostring(widget.Keybind.KeyName or "Unbound"), Mode = tostring(widget.Keybind.Mode or "TOGGLE")}
                       elseif widget.Box then
                           snapshot = {Kind = "Checkbox", Value = widget.Value == true}
                       elseif widget.Swatch and typeof(widget.Value) == "Color3" then
@@ -501,12 +526,12 @@
                       elseif widget.Value ~= nil then
                           snapshot = {Kind = type(widget.Value) == "table" and "DropdownMulti" or "Value", Value = widget.Value}
                       end
-                      if snapshot then values[tostring(widget.Name)] = snapshot end
+                       if snapshot then values[string.format("v2:%d:%d:%d", tabIndex, sectionIndex, widgetIndex)] = snapshot end
                   end
               end
           end
       end
-       return {Version = 1, Theme = self.ThemeName or "Rimuru Dark", AutoSave = self.ConfigAutoSave == true, Values = values}
+        return {Version = 2, Theme = self.ThemeName or "Rimuru Dark", AutoSave = self.ConfigAutoSave == true, Values = values}
   end
 
   function Window:_configSnapshotText()
@@ -575,6 +600,13 @@
   end
 
   function Window:_findConfigWidget(name)
+      local tabIndex, sectionIndex, widgetIndex = tostring(name):match("^v2:(%d+):(%d+):(%d+)$")
+      if tabIndex then
+          local tab = self.Tabs[tonumber(tabIndex)]
+          local section = tab and tab.Sections[tonumber(sectionIndex)]
+          local widget = section and section.Widgets[tonumber(widgetIndex)]
+          if widget then return widget end
+      end
       for _, tab in ipairs(self.Tabs or {}) do
           for _, section in ipairs(tab.Sections or {}) do
               for _, widget in ipairs(section.Widgets or {}) do
@@ -609,7 +641,7 @@
                       widget.Keybind.KeyName = key
                        widget.Keybind.Button.Text = key
                        widget.Keybind.Mode = string.upper(tostring(snapshot.Mode or widget.Keybind.Mode or "TOGGLE"))
-                       if snapshot.Enabled ~= nil and widget.Set then widget.Set(snapshot.Enabled == true, true) end
+                        if snapshot.Enabled ~= nil and widget.Set then widget.Set(snapshot.Enabled == true) end
                        if widget.Keybind.IsUIToggle then self:SetUIToggleKeybind(key) end
                        self:_refreshKeybindOverlay(widget.Keybind)
                    end
@@ -1359,11 +1391,11 @@
   end
   function Window:SetVisible(value)
       value = value == true
-      if self.Minimized and self.MinimizedAttached then return end
-      if self.UIKeybindEntry and self.UIKeybindEntry.SetActive then self.UIKeybindEntry.SetActive(value, true) end
-       if self.Visible == value and ((self.Root and self.Root.Visible) == value) then return end
-       self.Visible = value
-       self:_refreshAtmosphere()
+       if self.Minimized and self.MinimizedAttached then return end
+       if self.UIKeybindEntry and self.UIKeybindEntry.SetActive then self.UIKeybindEntry.SetActive(value, true) end
+        if self.Visible == value and ((self.Root and self.Root.Visible) == value) then return end
+        self.Visible = value
+        self:_refreshAtmosphere()
       if self.VisibilityTweens then
           for _, tween in ipairs(self.VisibilityTweens) do tween:Cancel() end
       end
@@ -1387,11 +1419,11 @@
        self.WindowVisibilityScaleTween:Play(); self.WindowVisibilityOuterScaleTween:Play()
   end
 
-   function Window:SetUIToggleKeybind(key)
-       local name = typeof(key) == "EnumItem" and key.Name or tostring(key or "RightAlt")
-       if name == "Backspace" or name == "None" or name == "Unknown" then name = "Unbound" end
-       if name ~= "Unbound" and not Enum.KeyCode[name] then name = "RightAlt" end
-       self.UIKeybindName = name
+  function Window:SetUIToggleKeybind(key)
+      local name = typeof(key) == "EnumItem" and key.Name or tostring(key or "RightAlt")
+      if name == "Backspace" or name == "None" or name == "Unknown" then name = "Unbound" end
+       if name ~= "Unbound" and not isBindableName(name) then name = "RightAlt" end
+      self.UIKeybindName = name
         if self.UIKeybindEntry and self.UIKeybindEntry.Button then
             self.UIKeybindEntry.KeyName = name
             self.UIKeybindEntry.Button.Text = name
@@ -1399,7 +1431,9 @@
         end
        if self.UIKeybindConnection then self.UIKeybindConnection:Disconnect() end
        self.UIKeybindConnection = UIS.InputBegan:Connect(function(input, processed)
-           if not self.MinimizedAttached and not processed and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode.Name == self.UIKeybindName then
+           local inputName = bindableInputName(input)
+           local mouseInput = isMouseBindableInput(input)
+           if not self.MinimizedAttached and (not processed or mouseInput) and inputName == self.UIKeybindName then
                  self:SetVisible(not self.Visible)
            end
        end)
@@ -1707,6 +1741,11 @@
        self.Filtering = filtering
    end
 function Window:Destroy()
+      if self._Destroyed then return end
+      self._Destroyed = true
+      if self.Config and type(self.Config.OnDestroy) == "function" then
+          pcall(self.Config.OnDestroy, self)
+      end
       self:ClosePopup()
       if self.PendingKeybind then self.PendingKeybind.Cancel(); self.PendingKeybind = nil end
       if self.PopupInput then self.PopupInput:Disconnect(); self.PopupInput = nil end
@@ -1900,42 +1939,55 @@ function Section:CreateCheckbox(config)
             end
             if popupWindow.PendingKeybind then popupWindow.PendingKeybind.Cancel() end
             listening, keyButton.Text = true, "Press key..."
-            popupWindow.PendingKeybind = {Button = keyButton, Cancel = function()
+             popupWindow.PendingKeybind = {Button = keyButton, Cancel = function()
                 if bindConnection then bindConnection:Disconnect(); bindConnection = nil end
                 listening = false; keyButton.Text = keyEntry.KeyName
-            end}
-            bindConnection = UIS.InputBegan:Connect(function(input, processed)
-                if not processed and input.UserInputType == Enum.UserInputType.Keyboard then
-                    local nextKey = input.KeyCode.Name == "Backspace" and "Unbound" or input.KeyCode.Name
-                    if popupWindow:_keybindAvailable(nextKey, keyEntry) then keyEntry.KeyName = nextKey; keyButton.Text = nextKey end
+             end}
+             bindConnection = UIS.InputBegan:Connect(function(input, processed)
+                 local inputName = bindableInputName(input)
+                 local mouseInput = isMouseBindableInput(input)
+                 if inputName and (not processed or mouseInput) then
+                     local nextKey = inputName == "Backspace" and "Unbound" or inputName
+                     if popupWindow:_keybindAvailable(nextKey, keyEntry) then keyEntry.KeyName = nextKey; keyButton.Text = nextKey end
                     listening = false
                     if bindConnection then bindConnection:Disconnect(); bindConnection = nil end
                     popupWindow.PendingKeybind = nil; popupWindow:_refreshKeybindOverlay()
                 end
             end)
-        end)
-        local runtimeBegan = UIS.InputBegan:Connect(function(input, processed)
-            if processed or listening or not w.Value or not keyEntry.Button.Parent or input.UserInputType ~= Enum.UserInputType.Keyboard or input.KeyCode.Name ~= keyEntry.KeyName then return end
-            if keyEntry.Mode == "HOLD" then keyEntry.SetActive(true)
+         end)
+         local runtimeBegan = UIS.InputBegan:Connect(function(input, processed)
+             local inputName = bindableInputName(input)
+             local mouseInput = isMouseBindableInput(input)
+             if (processed and not mouseInput) or listening or not w.Value or not keyEntry.Button.Parent or inputName ~= keyEntry.KeyName then return end
+             if keyEntry.Mode == "HOLD" then keyEntry.SetActive(true)
             elseif keyEntry.Mode == "ALWAYS" then keyEntry.SetActive(true)
             elseif keyEntry.Mode == "CLICK" then keyEntry.SetActive(true); task.delay(.12, function() if keyEntry.Button.Parent and keyEntry.Mode == "CLICK" then keyEntry.SetActive(false) end end)
             else keyEntry.SetActive(not keyEntry.Active) end
-        end)
-        local runtimeEnded = UIS.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode.Name == keyEntry.KeyName and keyEntry.Mode == "HOLD" then keyEntry.SetActive(false) end
-        end)
+         end)
+         local runtimeEnded = UIS.InputEnded:Connect(function(input)
+             if bindableInputName(input) == keyEntry.KeyName and keyEntry.Mode == "HOLD" then keyEntry.SetActive(false) end
+         end)
         table.insert(popupWindow.KeybindConnections, runtimeBegan); table.insert(popupWindow.KeybindConnections, runtimeEnded)
-    end
-    local function set(value, silent)
-        w.Value = value == true
+     end
+     local function set(value, silent)
+         local nextValue = value == true
+         local valueChanged = w.Value ~= nextValue
+         w.Value = nextValue
         TweenService:Create(fill, TweenInfo.new(.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
             BackgroundTransparency = w.Value and 0 or 1,
             Position = w.Value and UDim2.fromOffset(2, 2) or UDim2.fromOffset(4, 4),
             Size = w.Value and UDim2.fromOffset(14, 14) or UDim2.fromOffset(10, 10),
-        }):Play()
-        boxStroke.Color = Theme.Border; boxStroke.Transparency = 0
-        if keyEntry then keyEntry.Active = w.Value and keyEntry.Mode ~= "HOLD" and keyEntry.Mode ~= "CLICK"; popupWindow:_refreshKeybindOverlay(keyEntry) end
-        if not silent and config.Callback then config.Callback(w.Value) end
+         }):Play()
+         boxStroke.Color = Theme.Border; boxStroke.Transparency = 0
+         if keyEntry then
+             if not w.Value then
+                 keyEntry.Active = false
+             elseif valueChanged then
+                 keyEntry.Active = keyEntry.Mode == "ALWAYS"
+             end
+             popupWindow:_refreshKeybindOverlay(keyEntry)
+         end
+         if not silent and config.Callback then config.Callback(w.Value) end
     end
     if keyEntry then
         keyEntry.SetActive = function(value, silent)
@@ -2161,15 +2213,19 @@ function Section:CreateKeybind(config)
           if popupWindow.PendingKeybind then popupWindow.PendingKeybind.Cancel() end
           original = button.Text
           listening, button.Text = true, "Press key..."
-          resize()
-          popupWindow.PendingKeybind = {Button = button, Cancel = cancel}
-          connection = UIS.InputBegan:Connect(function(input, processed)
-              if not processed and input.UserInputType == Enum.UserInputType.Keyboard then
-                  local nextKey = input.KeyCode.Name == "Backspace" and "Unbound" or input.KeyCode.Name
-                  if popupWindow:_keybindAvailable(nextKey, keyEntry) then
-                      keyEntry.KeyName = nextKey
-                      button.Text = nextKey
-                      if nextKey ~= "Unbound" and config.Callback then config.Callback(input.KeyCode) end
+           resize()
+           popupWindow.PendingKeybind = {Button = button, Cancel = cancel}
+           connection = UIS.InputBegan:Connect(function(input, processed)
+               local inputName = bindableInputName(input)
+               local mouseInput = isMouseBindableInput(input)
+               if inputName and (not processed or mouseInput) then
+                   local nextKey = inputName == "Backspace" and "Unbound" or inputName
+                   if popupWindow:_keybindAvailable(nextKey, keyEntry) then
+                       keyEntry.KeyName = nextKey
+                       button.Text = nextKey
+                       if nextKey ~= "Unbound" and config.Callback then
+                           config.Callback(input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode or input.UserInputType)
+                       end
                   else
                       button.Text = original
                   end
@@ -2181,10 +2237,12 @@ function Section:CreateKeybind(config)
       end)
        button.MouseButton2Click:Connect(function()
           if not listening and not keyEntry.IsUIToggle then popupWindow:_openKeybindModeMenu(keyEntry) end
-      end)
-      local runtimeBegan = UIS.InputBegan:Connect(function(input, processed)
-          if processed or keyEntry.IsUIToggle or listening or not keyEntry.Button.Parent or input.UserInputType ~= Enum.UserInputType.Keyboard or input.KeyCode.Name ~= keyEntry.KeyName then return end
-          if keyEntry.Mode == "HOLD" then
+       end)
+       local runtimeBegan = UIS.InputBegan:Connect(function(input, processed)
+           local inputName = bindableInputName(input)
+           local mouseInput = isMouseBindableInput(input)
+           if (processed and not mouseInput) or keyEntry.IsUIToggle or listening or not keyEntry.Button.Parent or inputName ~= keyEntry.KeyName then return end
+           if keyEntry.Mode == "HOLD" then
               keyEntry.SetActive(true)
           elseif keyEntry.Mode == "ALWAYS" then
               keyEntry.SetActive(true)
@@ -2194,10 +2252,10 @@ function Section:CreateKeybind(config)
           else
               keyEntry.SetActive(not keyEntry.Active)
           end
-      end)
-      local runtimeEnded = UIS.InputEnded:Connect(function(input)
-          if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode.Name == keyEntry.KeyName and keyEntry.Mode == "HOLD" then keyEntry.SetActive(false) end
-      end)
+       end)
+       local runtimeEnded = UIS.InputEnded:Connect(function(input)
+           if bindableInputName(input) == keyEntry.KeyName and keyEntry.Mode == "HOLD" then keyEntry.SetActive(false) end
+       end)
       table.insert(popupWindow.KeybindConnections, runtimeBegan); table.insert(popupWindow.KeybindConnections, runtimeEnded)
       table.insert(popupWindow.Keybinds, keyEntry)
       if popupWindow.KeybindOverlay then popupWindow:_refreshKeybindOverlay() end
