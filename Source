@@ -228,11 +228,9 @@
       if isKeyPressed then
           local ok, down = pcall(isKeyPressed, probe.Code)
           if ok and pressed(down) then return true end
-          if not legacyKeyPressed then
-              for _, probeName in ipairs(probe.Names) do
-                  ok, down = pcall(isKeyPressed, probeName)
-                  if ok and pressed(down) then return true end
-              end
+          for _, probeName in ipairs(probe.Names) do
+              ok, down = pcall(isKeyPressed, probeName)
+              if ok and pressed(down) then return true end
           end
       end
       return false
@@ -882,7 +880,7 @@
       if overlay.Outer then overlay.Outer.Size = UDim2.fromOffset(278, 50 + rows * 24) end
   end
 
-  function Window:_animateOverlay(panel, visible)
+  function Window:_animateOverlay(panel, visible, instant)
       self.OverlayAnimations = self.OverlayAnimations or {}
       local state = self.OverlayAnimations[panel]
       if not state then state = {Position = panel.Position, Tweens = {}, Serial = 0, Completed = true}; self.OverlayAnimations[panel] = state end
@@ -913,6 +911,25 @@
       for _, child in ipairs(panel:GetDescendants()) do remember(child) end
       local info = visible and TweenInfo.new(.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out) or TweenInfo.new(.09, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
       local targetPosition = UDim2.new(state.Position.X.Scale, state.Position.X.Offset, state.Position.Y.Scale, state.Position.Y.Offset + (visible and 0 or 6))
+      if instant then
+          panel.Position = visible and state.Position or targetPosition
+          panel.Visible = visible
+          if visible then
+              for object, base in pairs(state.Background or {}) do if object and object.Parent then object.BackgroundTransparency = base end end
+              for object, base in pairs(state.Text or {}) do if object and object.Parent then object.TextTransparency = base end end
+              for object, base in pairs(state.Image or {}) do if object and object.Parent then object.ImageTransparency = base end end
+              for object, base in pairs(state.Stroke or {}) do if object and object.Parent then object.Transparency = base end end
+              for object, base in pairs(state.ScrollBar or {}) do if object and object.Parent then object.ScrollBarImageTransparency = base end end
+          else
+              for object in pairs(state.Background or {}) do if object and object.Parent then object.BackgroundTransparency = 1 end end
+              for object in pairs(state.Text or {}) do if object and object.Parent then object.TextTransparency = 1 end end
+              for object in pairs(state.Image or {}) do if object and object.Parent then object.ImageTransparency = 1 end end
+              for object in pairs(state.Stroke or {}) do if object and object.Parent then object.Transparency = 1 end end
+              for object in pairs(state.ScrollBar or {}) do if object and object.Parent then object.ScrollBarImageTransparency = 1 end end
+          end
+          state.Completed = true
+          return
+      end
       if visible then
           panel.Position = UDim2.new(state.Position.X.Scale, state.Position.X.Offset, state.Position.Y.Scale, state.Position.Y.Offset + 6)
           panel.Visible = true
@@ -1309,7 +1326,10 @@
               window.UiMouseIconEnabled = nil
           end
       end
-      window.UiMouseConnection = RunService.RenderStepped:Connect(UpdateUiMouse)
+      window.UiMouseBindName = "RimuruUI_MouseState"
+      pcall(function() RunService:UnbindFromRenderStep(window.UiMouseBindName) end)
+      local mouseBound = pcall(function() RunService:BindToRenderStep(window.UiMouseBindName, Enum.RenderPriority.Last.Value, UpdateUiMouse) end)
+      if not mouseBound then window.UiMouseConnection = RunService.RenderStepped:Connect(UpdateUiMouse) end
       UpdateUiMouse()
       window:_createAtmosphere()
       local railWidth = config.RailWidth or math.floor(width * 0.27)
@@ -1503,8 +1523,8 @@
        else
            self:ClosePopup()
        end
-       self:_animateOverlay(self.Root, value)
-       self:_animateOverlay(self.Outer, value)
+       self:_animateOverlay(self.Root, value, true)
+       self:_animateOverlay(self.Outer, value, true)
        local scaleInfo = value and TweenInfo.new(.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out) or TweenInfo.new(.12, Enum.EasingStyle.Back, Enum.EasingDirection.In)
        self.WindowVisibilityScaleTween = TweenService:Create(self.RootScale, scaleInfo, {Scale = value and 1 or .82})
        self.WindowVisibilityOuterScaleTween = TweenService:Create(self.OuterScale, scaleInfo, {Scale = value and 1 or .82})
@@ -1737,8 +1757,8 @@
           self.Outer.Visible = true
           if self.RootScale then self.RootScale.Scale = 1 end
           if self.OuterScale then self.OuterScale.Scale = 1 end
-          self:_animateOverlay(self.Root, false)
-          self:_animateOverlay(self.Outer, false)
+          self:_animateOverlay(self.Root, false, true)
+          self:_animateOverlay(self.Outer, false, true)
            local minimizeInfo = TweenInfo.new(.14, Enum.EasingStyle.Back, Enum.EasingDirection.In)
           self.MinimizeScaleTween = TweenService:Create(self.RootScale, minimizeInfo, {Scale = .82})
           self.MinimizeOuterScaleTween = TweenService:Create(self.OuterScale, minimizeInfo, {Scale = .82})
@@ -1761,8 +1781,8 @@
       if wasAttached then
           if self.RootScale then self.RootScale.Scale = .82 end
           if self.OuterScale then self.OuterScale.Scale = .82 end
-          self:_animateOverlay(self.Root, true)
-          self:_animateOverlay(self.Outer, true)
+           self:_animateOverlay(self.Root, true, true)
+           self:_animateOverlay(self.Outer, true, true)
            local restoreInfo = TweenInfo.new(.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
           self.MinimizeScaleTween = TweenService:Create(self.RootScale, restoreInfo, {Scale = 1})
           self.MinimizeOuterScaleTween = TweenService:Create(self.OuterScale, restoreInfo, {Scale = 1})
@@ -1873,7 +1893,8 @@ function Window:Destroy()
       if self.PendingKeybind then self.PendingKeybind.Cancel(); self.PendingKeybind = nil end
       if self.PopupInput then self.PopupInput:Disconnect(); self.PopupInput = nil end
       if self.MenuInputAction then ContextActionService:UnbindAction(self.MenuInputAction); self.MenuInputAction = nil end
-      if self.UiMouseConnection then self.UiMouseConnection:Disconnect(); self.UiMouseConnection = nil end
+       if self.UiMouseConnection then self.UiMouseConnection:Disconnect(); self.UiMouseConnection = nil end
+       if self.UiMouseBindName then pcall(function() RunService:UnbindFromRenderStep(self.UiMouseBindName) end); self.UiMouseBindName = nil end
       if self.SideMouseConnection then self.SideMouseConnection:Disconnect(); self.SideMouseConnection = nil end
       if self.UiMouseBehavior ~= nil then
           UIS.MouseBehavior = self.UiMouseBehavior
