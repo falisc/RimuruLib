@@ -167,21 +167,21 @@
       Mouse4 = {
            Code = 0x05,
            Button = 4,
-          Names = {"mouse4", "Mouse4", "mousebutton4", "MouseButton4", "xbutton1", "XButton1"},
+           Names = {"mouse4", "Mouse4", "mousebutton4", "MouseButton4", "xbutton1", "XButton1", "forward", "Forward"},
           Functions = hostFunctionList({"ismouse4pressed", "isMouse4Pressed", "isxbutton1pressed", "isXButton1Pressed"}),
       },
       Mouse5 = {
            Code = 0x06,
            Button = 5,
-          Names = {"mouse5", "Mouse5", "mousebutton5", "MouseButton5", "xbutton2", "XButton2"},
+           Names = {"mouse5", "Mouse5", "mousebutton5", "MouseButton5", "xbutton2", "XButton2", "back", "Back"},
           Functions = hostFunctionList({"ismouse5pressed", "isMouse5Pressed", "isxbutton2pressed", "isXButton2Pressed"}),
       },
   }
   local function canonicalInputName(name)
       name = tostring(name or "")
       local lowerName = string.lower(name)
-      if lowerName == "mouse4" or lowerName == "mousebutton4" or lowerName == "mousebuttonx1" or lowerName == "xbutton1" then return "Mouse4" end
-      if lowerName == "mouse5" or lowerName == "mousebutton5" or lowerName == "mousebuttonx2" or lowerName == "xbutton2" then return "Mouse5" end
+       if lowerName == "mouse4" or lowerName == "mousebutton4" or lowerName == "mousebuttonx1" or lowerName == "xbutton1" or lowerName == "forward" then return "Mouse4" end
+       if lowerName == "mouse5" or lowerName == "mousebutton5" or lowerName == "mousebuttonx2" or lowerName == "xbutton2" or lowerName == "back" then return "Mouse5" end
       return name
   end
   local function isMouseBindingName(name)
