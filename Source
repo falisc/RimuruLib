@@ -1332,6 +1332,13 @@
       window.PopupState = nil
       window.PendingKeybind = nil
       local width, height = config.Width or 680, config.Height or 460
+      local mobileMode = UIS.TouchEnabled and not UIS.KeyboardEnabled
+      if mobileMode then
+          local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(width, height)
+          width = math.min(width, math.max(300, viewport.X - 16))
+          height = math.min(height, math.max(340, viewport.Y - 16))
+      end
+      window.IsMobile = mobileMode
       local root = New("CanvasGroup", {AnchorPoint = Vector2.new(.5, .5), BackgroundColor3 = Theme.Background, ClipsDescendants = true, GroupTransparency = 0, RimuruThemeRole = "WindowBackground", ZIndex = 2,
           Position = UDim2.fromScale(.5, .5), Size = UDim2.fromOffset(width, height)}, gui)
       local outer = OutlinePanel(gui, {AnchorPoint = Vector2.new(.5, .5), Position = UDim2.fromScale(.5, .5), Size = UDim2.fromOffset(width + 8, height + 8), ZIndex = 1}, 16)
@@ -1340,7 +1347,7 @@
       window.Root, window.Outer, window.RootScale, window.OuterScale, window.NormalWidth, window.NormalHeight = root, outer, rootScale, outerScale, width, height; window.NormalPosition = root.Position
       Corner(root, 12)
       window:_createAtmosphere()
-      local railWidth = config.RailWidth or math.floor(width * 0.27)
+      local railWidth = config.RailWidth or (mobileMode and math.min(150, math.floor(width * 0.34)) or math.floor(width * 0.27))
       local rail = New("Frame", {Active = true, BackgroundColor3 = Theme.Sidebar or Theme.Surface, BackgroundTransparency = Theme.SidebarTransparency or 0, BorderSizePixel = 0, RimuruThemeRole = "Sidebar", Size = UDim2.new(0, railWidth, 1, 0), ZIndex = 3}, root)
       Corner(rail, 12); window.Rail = rail
       New("Frame", {BackgroundColor3 = Theme.Sidebar or Theme.Surface, BackgroundTransparency = Theme.SidebarTransparency or 0, BorderSizePixel = 0, RimuruThemeRole = "Sidebar", Position = UDim2.new(1, -12, 0, 0), Size = UDim2.new(0, 12, 1, 0), ZIndex = 3}, rail)
@@ -1376,6 +1383,16 @@
       local content = New("ScrollingFrame", {Active = true, AutomaticCanvasSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, BorderSizePixel = 0, CanvasSize = UDim2.new(), ClipsDescendants = true, Position = UDim2.fromOffset(10, 51), ScrollBarImageColor3 = Theme.Muted, ScrollBarImageTransparency = .15, ScrollBarThickness = 3, ScrollingEnabled = true, Size = UDim2.new(1, -14, 1, -61)}, body)
       New("UIPadding", {PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4), PaddingTop = UDim.new(0, 8)}, content)
       window.Content = content; List(content, 10); window:_drag(root, header, logo, title, subtitle); search:GetPropertyChangedSignal("Text"):Connect(function() window:Filter(search.Text) end)
+      if mobileMode and workspace.CurrentCamera then
+          window.MobileViewportConnection = workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+              if not window.Gui or not window.Gui.Parent or not window.Root then return end
+              local viewport = workspace.CurrentCamera.ViewportSize
+              local nextWidth = math.min(config.Width or 680, math.max(300, viewport.X - 16))
+              local nextHeight = math.min(config.Height or 460, math.max(340, viewport.Y - 16))
+              window.Root.Size = UDim2.fromOffset(nextWidth, nextHeight)
+              window.Outer.Size = UDim2.fromOffset(nextWidth + 8, nextHeight + 8)
+          end)
+      end
       window.PopupInput = UIS.InputBegan:Connect(function(input)
           if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
           local point = input.Position
@@ -1405,7 +1422,7 @@
       local start, origin, dragging = nil, nil, false
       local window = self
       local function begin(input)
-          if input.UserInputType == Enum.UserInputType.MouseButton1 then
+          if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
               if window.WindowTween then window.WindowTween:Cancel() end
               if window.OuterTween then window.OuterTween:Cancel() end
               if window.DragTween then window.DragTween:Cancel() end
@@ -1416,7 +1433,7 @@
           handle.InputBegan:Connect(begin)
       end
       UIS.InputChanged:Connect(function(input)
-          if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+          if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
               local delta = input.Position - start
               local target = UDim2.new(origin.X.Scale, origin.X.Offset + delta.X, origin.Y.Scale, origin.Y.Offset + delta.Y)
               if window.DragTween then window.DragTween:Cancel() end
@@ -1434,7 +1451,7 @@
           end
       end)
       UIS.InputEnded:Connect(function(input)
-           if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+           if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
       end)
   end
   function Window:_popupPosition(anchor, width, height)
@@ -1931,6 +1948,7 @@ function Window:Destroy()
       if self.PendingKeybind then self.PendingKeybind.Cancel(); self.PendingKeybind = nil end
       if self.PopupInput then self.PopupInput:Disconnect(); self.PopupInput = nil end
       if self.SideMouseConnection then self.SideMouseConnection:Disconnect(); self.SideMouseConnection = nil end
+      if self.MobileViewportConnection then self.MobileViewportConnection:Disconnect(); self.MobileViewportConnection = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragTween then self.KeybindOverlay.DragTween:Cancel(); self.KeybindOverlay.DragTween = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragOuterTween then self.KeybindOverlay.DragOuterTween:Cancel(); self.KeybindOverlay.DragOuterTween = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragConnections then
