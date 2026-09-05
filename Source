@@ -44,6 +44,14 @@
       if ok and type(info) == "table" and type(info.Name) == "string" and info.Name ~= "" then return info.Name end
       return tostring(game.Name or "Unknown Game")
   end
+  local function ResolvePlayerAvatar(player)
+      if not player then return nil end
+      local ok, image = pcall(function()
+          local content = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+          return content
+      end)
+      return ok and type(image) == "string" and image ~= "" and image or nil
+  end
 
   local RimuruDark = {
       Background = Color3.fromRGB(8, 11, 13), Surface = Color3.fromRGB(12, 15, 17),
@@ -1501,7 +1509,6 @@
   function Window:SetVisible(value)
       value = value == true
        if self.Minimized and self.MinimizedAttached then return end
-       if self.UIKeybindEntry and self.UIKeybindEntry.SetActive then self.UIKeybindEntry.SetActive(value, true) end
         if self.Visible == value and ((self.Root and self.Root.Visible) == value) then return end
         self.Visible = value
         self:_refreshAtmosphere()
@@ -1545,8 +1552,10 @@
                  -- The UI toggle key is reserved for the UI. Prevent the same
                  -- InputBegan event from also toggling a feature bound to it.
                  self._suppressKeybindInput = inputName
-                 task.defer(function()
+                 self._uiToggleConsumedInput = inputName
+                 task.delay(0.05, function()
                      if self._suppressKeybindInput == inputName then self._suppressKeybindInput = nil end
+                     if self._uiToggleConsumedInput == inputName then self._uiToggleConsumedInput = nil end
                  end)
                  self:SetVisible(not self.Visible)
            end
@@ -1580,9 +1589,16 @@
               if pending and pending.Capture then
                   pending.Capture(inputName)
               else
-                  if self.UIKeybindName == inputName and not self.MinimizedAttached then self:SetVisible(not self.Visible) end
-                  for _, entry in ipairs(self.Keybinds or {}) do
-                      if entry.KeyName == inputName and entry.HandleBegan then entry.HandleBegan(inputName, false) end
+                  local isUiInput = self.UIKeybindName == inputName and not self.MinimizedAttached
+                  if isUiInput then
+                      self._suppressKeybindInput = inputName
+                      self._uiToggleConsumedInput = inputName
+                      self:SetVisible(not self.Visible)
+                  end
+                  if not isUiInput then
+                      for _, entry in ipairs(self.Keybinds or {}) do
+                          if entry.KeyName == inputName and entry.HandleBegan then entry.HandleBegan(inputName, false) end
+                      end
                   end
               end
           elseif not down and wasDown then
@@ -1598,7 +1614,10 @@
       self.HomeTab.Container = home
       local welcome = New("Frame", {BackgroundColor3 = Theme.Surface, BorderSizePixel = 0, RimuruThemeRole = "Surface", Size = UDim2.new(1, 0, 0, 62)}, home)
       Corner(welcome, 10); Outline(welcome, Theme.Divider)
-      local welcomeIcon = MakeIcon(welcome, "logo", nil, 34, false); welcomeIcon.Position = UDim2.fromOffset(12, 14)
+      local welcomeAvatar = New("ImageLabel", {BackgroundColor3 = Theme.Card, BackgroundTransparency = 0, BorderSizePixel = 0,
+          Image = ResolvePlayerAvatar(Player) or "", ImageColor3 = Color3.new(1, 1, 1), ScaleType = Enum.ScaleType.Crop,
+          Position = UDim2.fromOffset(12, 14), Size = UDim2.fromOffset(34, 34), ZIndex = 3}, welcome)
+      Corner(welcomeAvatar, 10); Outline(welcomeAvatar, Theme.Divider)
       local username = "Player"
       pcall(function() if Player then username = tostring(Player.Name or username) end end)
       local welcomeTitle = Label(welcome, "Welcome, " .. username, 12, Theme.Text, Fonts.Bold); welcomeTitle.Position = UDim2.fromOffset(60, 12); welcomeTitle.Size = UDim2.new(1, -72, 0, 20); welcomeTitle.TextTruncate = Enum.TextTruncate.AtEnd
@@ -2123,7 +2142,7 @@ function Section:CreateCheckbox(config)
           keyEntry.HandleBegan = function(inputName, processed)
               inputName = canonicalInputName(inputName)
               if keyEntry._skipInputName == inputName then keyEntry._skipInputName = nil; return end
-              if popupWindow._suppressKeybindInput == inputName then return end
+              if popupWindow._suppressKeybindInput == inputName or popupWindow._uiToggleConsumedInput == inputName then return end
               if not keyEntry.IsUIToggle and popupWindow.UIKeybindName == inputName then return end
               local mouseInput = isMouseBindingName(inputName)
               if (processed and not mouseInput) or listening or not w.Value or not keyEntry.Button.Parent or inputName ~= keyEntry.KeyName then return end
@@ -2430,7 +2449,7 @@ function Section:CreateKeybind(config)
        keyEntry.HandleBegan = function(inputName, processed)
             inputName = canonicalInputName(inputName)
             if keyEntry._skipInputName == inputName then keyEntry._skipInputName = nil; return end
-            if popupWindow._suppressKeybindInput == inputName then return end
+            if popupWindow._suppressKeybindInput == inputName or popupWindow._uiToggleConsumedInput == inputName then return end
             if not keyEntry.IsUIToggle and popupWindow.UIKeybindName == inputName then return end
             local mouseInput = isMouseBindingName(inputName)
            if (processed and not mouseInput) or keyEntry.IsUIToggle or listening or not keyEntry.Button.Parent or inputName ~= keyEntry.KeyName then return end
