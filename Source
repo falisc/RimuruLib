@@ -880,7 +880,7 @@
       if overlay.Outer then overlay.Outer.Size = UDim2.fromOffset(278, 50 + rows * 24) end
   end
 
-  function Window:_animateOverlay(panel, visible, instant)
+  function Window:_animateOverlay(panel, visible, instant, slide)
       self.OverlayAnimations = self.OverlayAnimations or {}
       local state = self.OverlayAnimations[panel]
       if not state then state = {Position = panel.Position, Tweens = {}, Serial = 0, Completed = true}; self.OverlayAnimations[panel] = state end
@@ -909,8 +909,9 @@
       end
       remember(panel)
       for _, child in ipairs(panel:GetDescendants()) do remember(child) end
-      local info = visible and TweenInfo.new(.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out) or TweenInfo.new(.09, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-      local targetPosition = UDim2.new(state.Position.X.Scale, state.Position.X.Offset, state.Position.Y.Scale, state.Position.Y.Offset + (visible and 0 or 6))
+      local info = TweenInfo.new(.18, Enum.EasingStyle.Quad, visible and Enum.EasingDirection.Out or Enum.EasingDirection.In)
+      local slideOffset = slide == false and 0 or (visible and 0 or 6)
+      local targetPosition = UDim2.new(state.Position.X.Scale, state.Position.X.Offset, state.Position.Y.Scale, state.Position.Y.Offset + slideOffset)
       if instant then
           panel.Position = visible and state.Position or targetPosition
           panel.Visible = visible
@@ -931,7 +932,7 @@
           return
       end
       if visible then
-          panel.Position = UDim2.new(state.Position.X.Scale, state.Position.X.Offset, state.Position.Y.Scale, state.Position.Y.Offset + 6)
+          panel.Position = UDim2.new(state.Position.X.Scale, state.Position.X.Offset, state.Position.Y.Scale, state.Position.Y.Offset + slideOffset)
           panel.Visible = true
       end
       local function fade(objects, property, target)
@@ -1061,8 +1062,10 @@
       if not self.KeybindOverlay then return end
       value = value == true
       if value then self:_refreshKeybindOverlay() end
-      self:_animateOverlay(self.KeybindOverlay.Panel, value)
-      if self.KeybindOverlay.Outer then self:_animateOverlay(self.KeybindOverlay.Outer, value) end
+      -- Keep the panel and outline on the same fade-only timeline; do not
+      -- slide or rebuild the rows while the overlay is closing.
+      self:_animateOverlay(self.KeybindOverlay.Panel, value, false, false)
+      if self.KeybindOverlay.Outer then self:_animateOverlay(self.KeybindOverlay.Outer, value, false, false) end
   end
 
   function Window:SetWatermarkVisible(value)
@@ -1718,15 +1721,17 @@
           self:ClosePopup()
           if self.PendingKeybind then self.PendingKeybind.Cancel() end
       end
-      self.Page.Visible = not nextMinimized
-      self.Search.Visible = not nextMinimized
-      self.SearchIcon.Visible = not nextMinimized
-      self.HeaderDivider.Visible = not nextMinimized
-      self.Nav.Visible = not nextMinimized
-      self.BottomNav.Visible = not nextMinimized
-      self.HomeNav.Visible = not nextMinimized
-      self.PopupLayer.Visible = not nextMinimized
-      self.Content.Visible = not nextMinimized
+      if not nextMinimized then
+          self.Page.Visible = true
+          self.Search.Visible = true
+          self.SearchIcon.Visible = true
+          self.HeaderDivider.Visible = true
+          self.Nav.Visible = true
+          self.BottomNav.Visible = true
+          self.HomeNav.Visible = true
+          self.PopupLayer.Visible = true
+          self.Content.Visible = true
+      end
       if self.WindowTween then self.WindowTween:Cancel() end
       if self.OuterTween then self.OuterTween:Cancel() end
       if attached then
@@ -1734,45 +1739,44 @@
           self.Outer.Visible = true
           if self.RootScale then self.RootScale.Scale = 1 end
           if self.OuterScale then self.OuterScale.Scale = 1 end
-           local minimizeInfo = TweenInfo.new(.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-          self.MinimizeScaleTween = TweenService:Create(self.RootScale, minimizeInfo, {Scale = .82})
-          self.MinimizeOuterScaleTween = TweenService:Create(self.OuterScale, minimizeInfo, {Scale = .82})
-          local scaleTween = self.MinimizeScaleTween
-          scaleTween.Completed:Connect(function()
-              if self.MinimizeScaleTween == scaleTween and self.Minimized and self.MinimizedAttached and self.Root.Parent then
-                  self.Root.Visible = false
-                  self.Outer.Visible = false
-                  self.MinimizeScaleTween = nil
-                  self.MinimizeOuterScaleTween = nil
-              end
-          end)
-          self.MinimizeScaleTween:Play()
-          self.MinimizeOuterScaleTween:Play()
+          if nextMinimized then
+              self:_animateOverlay(self.Root, false, false, false)
+              self:_animateOverlay(self.Outer, false, false, false)
+          else
+              self:_animateOverlay(self.Root, true, false, false)
+              self:_animateOverlay(self.Outer, true, false, false)
+          end
           self:_refreshFloatingIslandLayout()
           return
       end
       self.Root.Visible = true
       self.Outer.Visible = true
-      if wasAttached then
-          if self.RootScale then self.RootScale.Scale = .82 end
-          if self.OuterScale then self.OuterScale.Scale = .82 end
-           local restoreInfo = TweenInfo.new(.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-          self.MinimizeScaleTween = TweenService:Create(self.RootScale, restoreInfo, {Scale = 1})
-          self.MinimizeOuterScaleTween = TweenService:Create(self.OuterScale, restoreInfo, {Scale = 1})
-          self.MinimizeScaleTween:Play()
-          self.MinimizeOuterScaleTween:Play()
-      else
-          if self.RootScale then self.RootScale.Scale = 1 end
-          if self.OuterScale then self.OuterScale.Scale = 1 end
-      end
+      if self.RootScale then self.RootScale.Scale = 1 end
+      if self.OuterScale then self.OuterScale.Scale = 1 end
       local targetHeight = nextMinimized and 58 or self.NormalHeight
       local normalPosition = self.NormalPosition
       local targetPosition = nextMinimized and UDim2.new(normalPosition.X.Scale, normalPosition.X.Offset, normalPosition.Y.Scale, normalPosition.Y.Offset - (self.NormalHeight - targetHeight) / 2) or normalPosition
-       local tweenInfo = TweenInfo.new(.16, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+       local tweenInfo = TweenInfo.new(.18, Enum.EasingStyle.Quad, nextMinimized and Enum.EasingDirection.In or Enum.EasingDirection.Out)
       self.WindowTween = TweenService:Create(self.Root, tweenInfo, {Position = targetPosition, Size = UDim2.fromOffset(self.NormalWidth, targetHeight)})
       self.OuterTween = TweenService:Create(self.Outer, tweenInfo, {Position = targetPosition, Size = UDim2.fromOffset(self.NormalWidth + 8, targetHeight + 8)})
       self.WindowTween:Play(); self.OuterTween:Play()
-       if nextMinimized then task.delay(.12, function() if self.Minimized and not self.MinimizedAttached then self.Content.Visible = false end end) end
+      self:_animateOverlay(self.Root, not nextMinimized, false, false)
+      self:_animateOverlay(self.Outer, not nextMinimized, false, false)
+      if nextMinimized then
+          task.delay(.18, function()
+              if self.Minimized and not self.MinimizedAttached then
+                  self.Page.Visible = false
+                  self.Search.Visible = false
+                  self.SearchIcon.Visible = false
+                  self.HeaderDivider.Visible = false
+                  self.Nav.Visible = false
+                  self.BottomNav.Visible = false
+                  self.HomeNav.Visible = false
+                  self.PopupLayer.Visible = false
+                  self.Content.Visible = false
+              end
+          end)
+      end
       self:_refreshFloatingIslandLayout()
    end
   function Window:CreateTab(name, icon, config)
