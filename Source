@@ -1194,6 +1194,37 @@
        self.WatermarkOutline = watermarkOutline
        self.MinimizedSegment = minimizedSegment
        self.NotificationHost = notificationStack
+
+      -- Touch-only clients use a compact, draggable logo launcher instead of
+      -- the desktop minimized floating-island controls.
+      if self.IsMobile then
+          local miniOutline = OutlinePanel(gui, {Active = false, BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(64, 64), ZIndex = 59}, 18)
+          local mini = New("TextButton", {Active = true, AutoButtonColor = false, BackgroundColor3 = Theme.Surface, BackgroundTransparency = Theme.SurfaceTransparency or .5, BorderSizePixel = 0, ClipsDescendants = true, Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(56, 56), Text = "", ZIndex = 60, RimuruThemeRole = "FloatingIsland", Visible = false}, gui)
+          Corner(mini, 16); Outline(mini, Theme.Divider)
+          local miniLogo = MakeIcon(mini, "logo", nil, 46, false); miniLogo.AnchorPoint = Vector2.new(.5, .5); miniLogo.Position = UDim2.fromScale(.5, .5); miniLogo.ZIndex = 61
+          self.MobileMiniButton, self.MobileMiniOutline, self.MobileMiniDragConnections = mini, miniOutline, {}
+          local dragging, moved, dragStart, startPosition = false, false, nil, nil
+          mini.InputBegan:Connect(function(input)
+              if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+              dragging, moved, dragStart = true, false, input.Position
+              startPosition = Vector2.new(mini.Position.X.Offset, mini.Position.Y.Offset)
+          end)
+          local changed = UIS.InputChanged:Connect(function(input)
+              if not dragging or (input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch) then return end
+              local delta = input.Position - dragStart
+              if delta.Magnitude > 6 then moved = true end
+              local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(800, 600)
+              local maxX, maxY = math.max(8, viewport.X - mini.AbsoluteSize.X - 8), math.max(8, viewport.Y - mini.AbsoluteSize.Y - 8)
+              local x, y = math.clamp(startPosition.X + delta.X, 8, maxX), math.clamp(startPosition.Y + delta.Y, 8, maxY)
+              mini.Position = UDim2.fromOffset(math.floor(x), math.floor(y)); miniOutline.Position = UDim2.fromOffset(math.floor(x - 4), math.floor(y - 4))
+          end)
+          local ended = UIS.InputEnded:Connect(function(input)
+              if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+              if dragging and not moved and self.Minimized then self:SetMinimized(false) end
+              dragging = false
+          end)
+          table.insert(self.MobileMiniDragConnections, changed); table.insert(self.MobileMiniDragConnections, ended)
+      end
     local fpsConnection
     local frameCount, frameTime = 0, 0
     fpsConnection = RunService.RenderStepped:Connect(function(delta)
@@ -1335,8 +1366,8 @@
       local mobileMode = UIS.TouchEnabled and not UIS.KeyboardEnabled
       if mobileMode then
           local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(width, height)
-          width = math.min(width, math.max(300, viewport.X - 16))
-          height = math.min(height, math.max(340, viewport.Y - 16))
+          width = math.min(width, math.max(280, math.min(560, math.floor(viewport.X * .82))))
+          height = math.min(height, math.max(300, math.min(400, math.floor(viewport.Y * .72))))
       end
       window.IsMobile = mobileMode
       local root = New("CanvasGroup", {AnchorPoint = Vector2.new(.5, .5), BackgroundColor3 = Theme.Background, ClipsDescendants = true, GroupTransparency = 0, RimuruThemeRole = "WindowBackground", ZIndex = 2,
@@ -1347,7 +1378,7 @@
       window.Root, window.Outer, window.RootScale, window.OuterScale, window.NormalWidth, window.NormalHeight = root, outer, rootScale, outerScale, width, height; window.NormalPosition = root.Position
       Corner(root, 12)
       window:_createAtmosphere()
-      local railWidth = config.RailWidth or (mobileMode and math.min(150, math.floor(width * 0.34)) or math.floor(width * 0.27))
+      local railWidth = config.RailWidth or (mobileMode and math.min(120, math.floor(width * 0.30)) or math.floor(width * 0.27))
       local rail = New("Frame", {Active = true, BackgroundColor3 = Theme.Sidebar or Theme.Surface, BackgroundTransparency = Theme.SidebarTransparency or 0, BorderSizePixel = 0, RimuruThemeRole = "Sidebar", Size = UDim2.new(0, railWidth, 1, 0), ZIndex = 3}, root)
       Corner(rail, 12); window.Rail = rail
       New("Frame", {BackgroundColor3 = Theme.Sidebar or Theme.Surface, BackgroundTransparency = Theme.SidebarTransparency or 0, BorderSizePixel = 0, RimuruThemeRole = "Sidebar", Position = UDim2.new(1, -12, 0, 0), Size = UDim2.new(0, 12, 1, 0), ZIndex = 3}, rail)
@@ -1375,6 +1406,7 @@
        local minimize = New("TextButton", {AutoButtonColor = false, BackgroundColor3 = Theme.Card, BorderSizePixel = 0, ClipsDescendants = true, Position = UDim2.new(1, -58, 0, 2), Size = UDim2.fromOffset(24, 26), Text = ""}, header)
        local close = New("TextButton", {AutoButtonColor = false, BackgroundColor3 = Theme.Card, BorderSizePixel = 0, ClipsDescendants = true, Position = UDim2.new(1, -26, 0, 2), Size = UDim2.fromOffset(24, 26), Text = ""}, header)
        Corner(minimize, 13); Corner(close, 13); Outline(minimize, Theme.Divider); Outline(close, Theme.Divider)
+       minimize.Visible = not mobileMode
       local minimizeIcon = MakeIcon(minimize, "minimize", nil); minimizeIcon.Position = UDim2.fromOffset(3, 5)
       local closeIcon = MakeIcon(close, "close", nil); closeIcon.Position = UDim2.fromOffset(3, 5)
       local headerDivider = New("Frame", {BackgroundColor3 = Theme.Divider, BorderSizePixel = 0, Position = UDim2.new(0, 20, 0, 47), Size = UDim2.new(1, -32, 0, 1)}, body)
@@ -1387,8 +1419,8 @@
           window.MobileViewportConnection = workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
               if not window.Gui or not window.Gui.Parent or not window.Root then return end
               local viewport = workspace.CurrentCamera.ViewportSize
-              local nextWidth = math.min(config.Width or 680, math.max(300, viewport.X - 16))
-              local nextHeight = math.min(config.Height or 460, math.max(340, viewport.Y - 16))
+              local nextWidth = math.min(config.Width or 680, math.max(280, math.min(560, math.floor(viewport.X * .82))))
+              local nextHeight = math.min(config.Height or 460, math.max(300, math.min(400, math.floor(viewport.Y * .72))))
               window.Root.Size = UDim2.fromOffset(nextWidth, nextHeight)
               window.Outer.Size = UDim2.fromOffset(nextWidth + 8, nextHeight + 8)
           end)
@@ -1756,6 +1788,29 @@
 
   function Window:SetMinimized(value)
       local nextMinimized = value == true
+      if self.IsMobile then
+          if self.Minimized == nextMinimized then return end
+          self.Minimized, self.MinimizedAttached = nextMinimized, false
+          if nextMinimized then
+              self:ClosePopup()
+              if self.PendingKeybind then self.PendingKeybind.Cancel(); self.PendingKeybind = nil end
+              self.Root.Visible, self.Outer.Visible = false, false
+              if self.Watermark then self.Watermark.Visible = false end
+              if self.WatermarkOutline then self.WatermarkOutline.Visible = false end
+              if self.KeybindOverlay then self.KeybindOverlay.Panel.Visible = false; if self.KeybindOverlay.Outer then self.KeybindOverlay.Outer.Visible = false end end
+              if self.MobileMiniButton then self.MobileMiniButton.Visible = true end
+              if self.MobileMiniOutline then self.MobileMiniOutline.Visible = true end
+          else
+              self.Root.Visible, self.Outer.Visible = true, true
+              if self.MobileMiniButton then self.MobileMiniButton.Visible = false end
+              if self.MobileMiniOutline then self.MobileMiniOutline.Visible = false end
+              if self.Watermark and self.FloatingIslandEnabled then self.Watermark.Visible = true end
+              if self.WatermarkOutline and self.FloatingIslandEnabled then self.WatermarkOutline.Visible = true end
+              if self.KeybindOverlay then self.KeybindOverlay.Panel.Visible = true; if self.KeybindOverlay.Outer then self.KeybindOverlay.Outer.Visible = true end end
+              self:_resetTabVisuals()
+          end
+          return
+      end
       local attached = nextMinimized and self.FloatingIslandEnabled == true
       local wasAttached = self.MinimizedAttached == true
       if self.Minimized == nextMinimized and self.MinimizedAttached == attached then return end
@@ -1949,6 +2004,10 @@ function Window:Destroy()
       if self.PopupInput then self.PopupInput:Disconnect(); self.PopupInput = nil end
       if self.SideMouseConnection then self.SideMouseConnection:Disconnect(); self.SideMouseConnection = nil end
       if self.MobileViewportConnection then self.MobileViewportConnection:Disconnect(); self.MobileViewportConnection = nil end
+      if self.MobileMiniDragConnections then
+          for _, connection in ipairs(self.MobileMiniDragConnections) do connection:Disconnect() end
+          self.MobileMiniDragConnections = nil
+      end
     if self.KeybindOverlay and self.KeybindOverlay.DragTween then self.KeybindOverlay.DragTween:Cancel(); self.KeybindOverlay.DragTween = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragOuterTween then self.KeybindOverlay.DragOuterTween:Cancel(); self.KeybindOverlay.DragOuterTween = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragConnections then
