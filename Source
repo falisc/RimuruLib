@@ -257,11 +257,13 @@
       end)
       button.AncestryChanged:Connect(function(_, parent) if not parent and ended then ended:Disconnect(); ended = nil end end)
   end
-  local function Action(parent, text, height)
+  local function Action(parent, text, height, animate)
       local button = New("TextButton", {AutoButtonColor = false, BackgroundColor3 = Theme.Card, BorderSizePixel = 0,
           FontFace = Fonts.Regular, RichText = false, Text = text or "", TextColor3 = Theme.Text, TextScaled = false, TextSize = 11, TextStrokeTransparency = 1, TextWrapped = false,
           Size = UDim2.new(1, 0, 0, height or 28)}, parent)
-      Corner(button, math.floor((height or 28) / 2)); Outline(button, Theme.Divider); Hover(button); ClickTween(button); return button
+      Corner(button, math.floor((height or 28) / 2)); Outline(button, Theme.Divider)
+      if animate ~= false then Hover(button); ClickTween(button) end
+      return button
   end
   local function Remove(object) if object then object:Destroy() end end
   local Base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -1147,10 +1149,10 @@
        Corner(minimizedSegment, 10)
        New("Frame", {BackgroundColor3 = Theme.Divider, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 0), Size = UDim2.new(1, -24, 0, 1), ZIndex = 43}, minimizedSegment)
         local minimizedLabel = Label(minimizedSegment, "UI minimized", 10, Theme.Muted, Fonts.Regular); minimizedLabel.Position = UDim2.fromOffset(12, 4); minimizedLabel.Size = UDim2.new(1, -142, 0, 22); minimizedLabel.ZIndex = 43
-         local restore = Action(minimizedSegment, "Open UI", 22); restore.Position = UDim2.new(1, -118, 0, 4); restore.Size = UDim2.fromOffset(68, 22); restore.TextSize = 9; restore.ZIndex = 43
+         local restore = Action(minimizedSegment, "Open UI", 22, false); restore.Position = UDim2.new(1, -118, 0, 4); restore.Size = UDim2.fromOffset(68, 22); restore.TextSize = 9; restore.ZIndex = 43
          restore:SetAttribute("RimuruThemeRole", "FloatingSurfaceChild"); restore.BackgroundColor3 = Theme.Surface; restore.BackgroundTransparency = 1
          restore.MouseButton1Click:Connect(function() self:SetMinimized(false) end)
-         local minimizedClose = Action(minimizedSegment, "", 22); minimizedClose.Position = UDim2.new(1, -38, 0, 4); minimizedClose.Size = UDim2.fromOffset(28, 22); minimizedClose.ZIndex = 43
+         local minimizedClose = Action(minimizedSegment, "", 22, false); minimizedClose.Position = UDim2.new(1, -38, 0, 4); minimizedClose.Size = UDim2.fromOffset(28, 22); minimizedClose.ZIndex = 43
          minimizedClose:SetAttribute("RimuruThemeRole", "FloatingSurfaceChild"); minimizedClose.BackgroundColor3 = Theme.Surface; minimizedClose.BackgroundTransparency = 1
         local minimizedCloseIcon = MakeIcon(minimizedClose, "close", nil, 13, false); minimizedCloseIcon.Position = UDim2.fromOffset(7, 5); minimizedCloseIcon.ZIndex = 44
         minimizedClose.MouseButton1Click:Connect(function() self:Destroy() end)
@@ -1346,9 +1348,6 @@
        Corner(minimize, 13); Corner(close, 13); Outline(minimize, Theme.Divider); Outline(close, Theme.Divider)
       local minimizeIcon = MakeIcon(minimize, "minimize", nil); minimizeIcon.Position = UDim2.fromOffset(3, 5)
       local closeIcon = MakeIcon(close, "close", nil); closeIcon.Position = UDim2.fromOffset(3, 5)
-      ClickTween(minimize); ClickTween(close)
-       minimize.MouseEnter:Connect(function() TweenService:Create(minimize, TweenInfo.new(.12), {BackgroundColor3 = Theme.Hover}):Play() end); minimize.MouseLeave:Connect(function() TweenService:Create(minimize, TweenInfo.new(.12), {BackgroundColor3 = Theme.Card}):Play() end)
-       close.MouseEnter:Connect(function() TweenService:Create(close, TweenInfo.new(.12), {BackgroundColor3 = Theme.Hover}):Play() end); close.MouseLeave:Connect(function() TweenService:Create(close, TweenInfo.new(.12), {BackgroundColor3 = Theme.Card}):Play() end)
       local headerDivider = New("Frame", {BackgroundColor3 = Theme.Divider, BorderSizePixel = 0, Position = UDim2.new(0, 20, 0, 47), Size = UDim2.new(1, -32, 0, 1)}, body)
       window.HeaderDivider = headerDivider
       close.MouseButton1Click:Connect(function() window:Destroy() end); minimize.MouseButton1Click:Connect(function() window:SetMinimized(not window.Minimized) end)
