@@ -1556,6 +1556,12 @@
            local mouseInput = isMouseBindableInput(input)
            if inputName then self:_rememberSideMouseInput(inputName, true) end
            if not self.MinimizedAttached and (not processed or mouseInput) and inputName == self.UIKeybindName then
+                 -- The UI toggle key is reserved for the UI. Prevent the same
+                 -- InputBegan event from also toggling a feature bound to it.
+                 self._suppressKeybindInput = inputName
+                 task.defer(function()
+                     if self._suppressKeybindInput == inputName then self._suppressKeybindInput = nil end
+                 end)
                  self:SetVisible(not self.Visible)
            end
        end)
@@ -2132,6 +2138,7 @@ function Section:CreateCheckbox(config)
           keyEntry.HandleBegan = function(inputName, processed)
               inputName = canonicalInputName(inputName)
               if keyEntry._skipInputName == inputName then keyEntry._skipInputName = nil; return end
+              if popupWindow._suppressKeybindInput == inputName then return end
               local mouseInput = isMouseBindingName(inputName)
               if (processed and not mouseInput) or listening or not w.Value or not keyEntry.Button.Parent or inputName ~= keyEntry.KeyName then return end
               if keyEntry.Mode == "HOLD" then keyEntry.SetActive(true)
@@ -2435,9 +2442,10 @@ function Section:CreateKeybind(config)
           if not listening and not keyEntry.IsUIToggle then popupWindow:_openKeybindModeMenu(keyEntry) end
        end)
        keyEntry.HandleBegan = function(inputName, processed)
-           inputName = canonicalInputName(inputName)
-           if keyEntry._skipInputName == inputName then keyEntry._skipInputName = nil; return end
-           local mouseInput = isMouseBindingName(inputName)
+            inputName = canonicalInputName(inputName)
+            if keyEntry._skipInputName == inputName then keyEntry._skipInputName = nil; return end
+            if popupWindow._suppressKeybindInput == inputName then return end
+            local mouseInput = isMouseBindingName(inputName)
            if (processed and not mouseInput) or keyEntry.IsUIToggle or listening or not keyEntry.Button.Parent or inputName ~= keyEntry.KeyName then return end
            if keyEntry.Mode == "HOLD" then
               keyEntry.SetActive(true)
