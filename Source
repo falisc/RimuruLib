@@ -1501,18 +1501,16 @@
        if value then
            self.Root.Visible = true
            self.Outer.Visible = true
-           if self.RootScale then self.RootScale.Scale = .82 end
-           if self.OuterScale then self.OuterScale.Scale = .82 end
+           if self.RootScale then self.RootScale.Scale = 1 end
+           if self.OuterScale then self.OuterScale.Scale = 1 end
            self:_resetTabVisuals()
        else
            self:ClosePopup()
        end
-       self:_animateOverlay(self.Root, value, true)
-       self:_animateOverlay(self.Outer, value, true)
-       local scaleInfo = value and TweenInfo.new(.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out) or TweenInfo.new(.12, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-       self.WindowVisibilityScaleTween = TweenService:Create(self.RootScale, scaleInfo, {Scale = value and 1 or .82})
-       self.WindowVisibilityOuterScaleTween = TweenService:Create(self.OuterScale, scaleInfo, {Scale = value and 1 or .82})
-       self.WindowVisibilityScaleTween:Play(); self.WindowVisibilityOuterScaleTween:Play()
+       -- Use the same fade-only timeline as minimize/restore. The old Back
+       -- scale tweens caused the visible mid-animation hitch.
+       self:_animateOverlay(self.Root, value, false, false)
+       self:_animateOverlay(self.Outer, value, false, false)
   end
 
   function Window:SetUIToggleKeybind(key)
