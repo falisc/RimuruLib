@@ -909,8 +909,13 @@
               state.ScrollBar = state.ScrollBar or {}; if state.ScrollBar[object] == nil then state.ScrollBar[object] = object.ScrollBarImageTransparency end
           end
       end
-      remember(panel)
-      for _, child in ipairs(panel:GetDescendants()) do remember(child) end
+      local isCanvasGroup = panel:IsA("CanvasGroup")
+      if isCanvasGroup then
+          state.GroupTransparency = state.GroupTransparency == nil and panel.GroupTransparency or state.GroupTransparency
+      else
+          remember(panel)
+          for _, child in ipairs(panel:GetDescendants()) do remember(child) end
+      end
       local info = TweenInfo.new(.18, Enum.EasingStyle.Quad, visible and Enum.EasingDirection.Out or Enum.EasingDirection.In)
       local slideOffset = slide == false and 0 or (visible and 0 or 6)
       local targetPosition = UDim2.new(state.Position.X.Scale, state.Position.X.Offset, state.Position.Y.Scale, state.Position.Y.Offset + slideOffset)
@@ -918,17 +923,23 @@
           panel.Position = visible and state.Position or targetPosition
           panel.Visible = visible
           if visible then
-              for object, base in pairs(state.Background or {}) do if object and object.Parent then object.BackgroundTransparency = base end end
-              for object, base in pairs(state.Text or {}) do if object and object.Parent then object.TextTransparency = base end end
-              for object, base in pairs(state.Image or {}) do if object and object.Parent then object.ImageTransparency = base end end
-              for object, base in pairs(state.Stroke or {}) do if object and object.Parent then object.Transparency = base end end
-              for object, base in pairs(state.ScrollBar or {}) do if object and object.Parent then object.ScrollBarImageTransparency = base end end
+              if isCanvasGroup then panel.GroupTransparency = state.GroupTransparency or 0
+              else
+                  for object, base in pairs(state.Background or {}) do if object and object.Parent then object.BackgroundTransparency = base end end
+                  for object, base in pairs(state.Text or {}) do if object and object.Parent then object.TextTransparency = base end end
+                  for object, base in pairs(state.Image or {}) do if object and object.Parent then object.ImageTransparency = base end end
+                  for object, base in pairs(state.Stroke or {}) do if object and object.Parent then object.Transparency = base end end
+                  for object, base in pairs(state.ScrollBar or {}) do if object and object.Parent then object.ScrollBarImageTransparency = base end end
+              end
           else
-              for object in pairs(state.Background or {}) do if object and object.Parent then object.BackgroundTransparency = 1 end end
-              for object in pairs(state.Text or {}) do if object and object.Parent then object.TextTransparency = 1 end end
-              for object in pairs(state.Image or {}) do if object and object.Parent then object.ImageTransparency = 1 end end
-              for object in pairs(state.Stroke or {}) do if object and object.Parent then object.Transparency = 1 end end
-              for object in pairs(state.ScrollBar or {}) do if object and object.Parent then object.ScrollBarImageTransparency = 1 end end
+              if isCanvasGroup then panel.GroupTransparency = 1
+              else
+                  for object in pairs(state.Background or {}) do if object and object.Parent then object.BackgroundTransparency = 1 end end
+                  for object in pairs(state.Text or {}) do if object and object.Parent then object.TextTransparency = 1 end end
+                  for object in pairs(state.Image or {}) do if object and object.Parent then object.ImageTransparency = 1 end end
+                  for object in pairs(state.Stroke or {}) do if object and object.Parent then object.Transparency = 1 end end
+                  for object in pairs(state.ScrollBar or {}) do if object and object.Parent then object.ScrollBarImageTransparency = 1 end end
+              end
           end
           state.Completed = true
           return
@@ -937,7 +948,8 @@
           panel.Position = UDim2.new(state.Position.X.Scale, state.Position.X.Offset, state.Position.Y.Scale, state.Position.Y.Offset + slideOffset)
           panel.Visible = true
       end
-      local function fade(objects, property, target)
+       local completionTween
+       local function fade(objects, property, target)
           for object, base in pairs(objects or {}) do
               if object and object.Parent then
                   if visible then object[property] = 1 end
@@ -946,13 +958,20 @@
               end
           end
       end
-      fade(state.Background, "BackgroundTransparency")
-      fade(state.Text, "TextTransparency")
-      fade(state.Image, "ImageTransparency")
-      fade(state.Stroke, "Transparency")
-      fade(state.ScrollBar, "ScrollBarImageTransparency")
-      local completionTween
-      if slide == false then
+       if isCanvasGroup then
+           if visible then panel.GroupTransparency = 1 end
+           completionTween = TweenService:Create(panel, info, {GroupTransparency = visible and (state.GroupTransparency or 0) or 1})
+           table.insert(state.Tweens, completionTween); completionTween:Play()
+       else
+           fade(state.Background, "BackgroundTransparency")
+           fade(state.Text, "TextTransparency")
+           fade(state.Image, "ImageTransparency")
+           fade(state.Stroke, "Transparency")
+           fade(state.ScrollBar, "ScrollBarImageTransparency")
+       end
+       if isCanvasGroup then
+           -- CanvasGroup already owns the complete menu fade.
+       elseif slide == false then
           -- Fade-only panels use the same keybind animation exactly: no
           -- hidden position tween competing with the visual fade.
           completionTween = state.Tweens[#state.Tweens]
@@ -1306,7 +1325,7 @@
       window.PopupState = nil
       window.PendingKeybind = nil
       local width, height = config.Width or 680, config.Height or 460
-      local root = New("Frame", {AnchorPoint = Vector2.new(.5, .5), BackgroundColor3 = Theme.Background, ClipsDescendants = true, RimuruThemeRole = "WindowBackground", ZIndex = 2,
+      local root = New("CanvasGroup", {AnchorPoint = Vector2.new(.5, .5), BackgroundColor3 = Theme.Background, ClipsDescendants = true, GroupTransparency = 0, RimuruThemeRole = "WindowBackground", ZIndex = 2,
           Position = UDim2.fromScale(.5, .5), Size = UDim2.fromOffset(width, height)}, gui)
       local outer = OutlinePanel(gui, {AnchorPoint = Vector2.new(.5, .5), Position = UDim2.fromScale(.5, .5), Size = UDim2.fromOffset(width + 8, height + 8), ZIndex = 1}, 16)
       local rootScale = New("UIScale", {Scale = 1}, root)
