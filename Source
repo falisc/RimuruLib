@@ -510,7 +510,9 @@
       local background = self.Atmosphere.ThemeBackground
       if background then
           local palette = ThemePalettes[self.ThemeName] or RimuruDark
-          background.Visible = active and palette.BackgroundImage ~= "" and background.Image ~= ""
+          -- Keep the theme image mounted while the CanvasGroup fades out. Hiding
+          -- it from _refreshAtmosphere would make image themes pop off instantly.
+          background.Visible = self.Minimized ~= true and palette.BackgroundImage ~= "" and background.Image ~= ""
       end
       local screensaver = self.Atmosphere.Screensaver
       if screensaver then
