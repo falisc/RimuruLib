@@ -5,8 +5,6 @@
   local RunService = game:GetService("RunService")
   local HttpService = game:GetService("HttpService")
   local MarketplaceService = game:GetService("MarketplaceService")
-  local GuiService = game:GetService("GuiService")
-  local ContextActionService = game:GetService("ContextActionService")
   local Player = Players.LocalPlayer
   local CoreGui = game:GetService("CoreGui")
   local function NormalizeGuiParent(candidate)
@@ -28,10 +26,6 @@
       return CoreGui
   end
   local GuiParent = ResolveGuiParent()
-  local function IsRobloxMenuOpen()
-      local ok, isOpen = pcall(function() return GuiService.MenuIsOpen end)
-      return ok and isOpen == true
-  end
   local function DetectExecutor()
       local name
       if type(identifyexecutor) == "function" then
@@ -1023,6 +1017,9 @@
               elseif role == "Card" then
                   object.BackgroundColor3 = Theme.Card
                   object.BackgroundTransparency = Theme.CardTransparency or 0
+               elseif role == "FloatingIsland" then
+                   object.BackgroundColor3 = Theme.Surface
+                   object.BackgroundTransparency = .5
                elseif role == "Surface" or role == "FloatingSurface" then
                    object.BackgroundColor3 = Theme.Surface
                    object.BackgroundTransparency = Theme.SurfaceTransparency or 0
@@ -1153,10 +1150,10 @@
            Active = false,
            AnchorPoint = Vector2.new(.5, 0),
            BackgroundColor3 = Theme.Surface,
-           BackgroundTransparency = Theme.SurfaceTransparency or 0,
+            BackgroundTransparency = .5,
            BorderSizePixel = 0,
            ClipsDescendants = true,
-           RimuruThemeRole = "FloatingSurface",
+            RimuruThemeRole = "FloatingIsland",
            Position = UDim2.new(.5, 0, 0, 18),
            Size = UDim2.fromOffset(390, 36),
           ZIndex = 40,
@@ -1210,9 +1207,9 @@
       local keybindPanel = New("Frame", {
          Active = true,
            BackgroundColor3 = Theme.Surface,
-           BackgroundTransparency = Theme.SurfaceTransparency or 0,
+            BackgroundTransparency = .5,
            BorderSizePixel = 0,
-           RimuruThemeRole = "FloatingSurface",
+            RimuruThemeRole = "FloatingIsland",
           Position = UDim2.fromOffset(18, 62),
           Size = UDim2.fromOffset(270, 66),
           ZIndex = 40,
@@ -1334,17 +1331,6 @@
       local outerScale = New("UIScale", {Scale = 1}, outer)
       window.Root, window.Outer, window.RootScale, window.OuterScale, window.NormalWidth, window.NormalHeight = root, outer, rootScale, outerScale, width, height; window.NormalPosition = root.Position
       Corner(root, 12)
-      window.MenuInputAction = "RimuruUI_PreserveEscapeMenu"
-      ContextActionService:BindActionAtPriority(window.MenuInputAction, function(_, state, input)
-          if state ~= Enum.UserInputState.Begin or not IsRobloxMenuOpen() then return Enum.ContextActionResult.Pass end
-          if not window.Root or not window.Root.Parent or not window.Root.Visible then return Enum.ContextActionResult.Pass end
-          local point = input.Position
-          local position, size = window.Root.AbsolutePosition, window.Root.AbsoluteSize
-          if point.X >= position.X and point.X <= position.X + size.X and point.Y >= position.Y and point.Y <= position.Y + size.Y then
-              return Enum.ContextActionResult.Sink
-          end
-          return Enum.ContextActionResult.Pass
-      end, false, Enum.ContextActionPriority.High.Value + 100, Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2, Enum.UserInputType.Touch)
       window:_createAtmosphere()
       local railWidth = config.RailWidth or math.floor(width * 0.27)
       local rail = New("Frame", {Active = true, BackgroundColor3 = Theme.Sidebar or Theme.Surface, BackgroundTransparency = Theme.SidebarTransparency or 0, BorderSizePixel = 0, RimuruThemeRole = "Sidebar", Size = UDim2.new(0, railWidth, 1, 0), ZIndex = 3}, root)
@@ -1925,7 +1911,6 @@ function Window:Destroy()
       self:ClosePopup()
       if self.PendingKeybind then self.PendingKeybind.Cancel(); self.PendingKeybind = nil end
       if self.PopupInput then self.PopupInput:Disconnect(); self.PopupInput = nil end
-      if self.MenuInputAction then ContextActionService:UnbindAction(self.MenuInputAction); self.MenuInputAction = nil end
       if self.SideMouseConnection then self.SideMouseConnection:Disconnect(); self.SideMouseConnection = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragTween then self.KeybindOverlay.DragTween:Cancel(); self.KeybindOverlay.DragTween = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragOuterTween then self.KeybindOverlay.DragOuterTween:Cancel(); self.KeybindOverlay.DragOuterTween = nil end
@@ -2139,6 +2124,7 @@ function Section:CreateCheckbox(config)
               inputName = canonicalInputName(inputName)
               if keyEntry._skipInputName == inputName then keyEntry._skipInputName = nil; return end
               if popupWindow._suppressKeybindInput == inputName then return end
+              if not keyEntry.IsUIToggle and popupWindow.UIKeybindName == inputName then return end
               local mouseInput = isMouseBindingName(inputName)
               if (processed and not mouseInput) or listening or not w.Value or not keyEntry.Button.Parent or inputName ~= keyEntry.KeyName then return end
               if keyEntry.Mode == "HOLD" then keyEntry.SetActive(true)
@@ -2445,6 +2431,7 @@ function Section:CreateKeybind(config)
             inputName = canonicalInputName(inputName)
             if keyEntry._skipInputName == inputName then keyEntry._skipInputName = nil; return end
             if popupWindow._suppressKeybindInput == inputName then return end
+            if not keyEntry.IsUIToggle and popupWindow.UIKeybindName == inputName then return end
             local mouseInput = isMouseBindingName(inputName)
            if (processed and not mouseInput) or keyEntry.IsUIToggle or listening or not keyEntry.Button.Parent or inputName ~= keyEntry.KeyName then return end
            if keyEntry.Mode == "HOLD" then
