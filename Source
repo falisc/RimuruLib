@@ -1090,6 +1090,10 @@
   end
 
   function Window:_resetTabVisuals()
+       for _, tweens in pairs(self.TabVisualTweens or {}) do
+           for _, tween in ipairs(tweens) do pcall(function() tween:Cancel() end) end
+       end
+       self.TabVisualTweens = {}
        for _, candidate in ipairs(self.Tabs or {}) do
            local active = candidate == self.ActiveTab
            if candidate.Button and candidate.Button.Parent then
@@ -1308,33 +1312,6 @@
           end
           return Enum.ContextActionResult.Pass
       end, false, Enum.ContextActionPriority.High.Value + 100, Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2, Enum.UserInputType.Touch)
-      window.UiMouseBehavior = nil
-      window.UiMouseWasOpen = false
-      window.UiMouseIconEnabled = nil
-      local function UpdateUiMouse()
-           local uiOpen = window.Visible == true and window.Minimized ~= true and window.Root and window.Root.Parent and window.Root.Visible
-           if uiOpen then
-               if not window.UiMouseWasOpen then
-                   window.UiMouseBehavior = UIS.MouseBehavior
-                   window.UiMouseIconEnabled = UIS.MouseIconEnabled
-               end
-               UIS.MouseBehavior = Enum.MouseBehavior.Default
-               UIS.MouseIconEnabled = true
-           elseif window.UiMouseWasOpen then
-               if window.UiMouseBehavior ~= nil then
-                   UIS.MouseBehavior = window.UiMouseBehavior
-               end
-               if window.UiMouseIconEnabled ~= nil then UIS.MouseIconEnabled = window.UiMouseIconEnabled end
-               window.UiMouseBehavior = nil
-               window.UiMouseIconEnabled = nil
-           end
-           window.UiMouseWasOpen = uiOpen == true
-       end
-      window.UiMouseBindName = "RimuruUI_MouseState"
-      pcall(function() RunService:UnbindFromRenderStep(window.UiMouseBindName) end)
-      local mouseBound = pcall(function() RunService:BindToRenderStep(window.UiMouseBindName, Enum.RenderPriority.Last.Value, UpdateUiMouse) end)
-      if not mouseBound then window.UiMouseConnection = RunService.RenderStepped:Connect(UpdateUiMouse) end
-      UpdateUiMouse()
       window:_createAtmosphere()
       local railWidth = config.RailWidth or math.floor(width * 0.27)
       local rail = New("Frame", {Active = true, BackgroundColor3 = Theme.Sidebar or Theme.Surface, BackgroundTransparency = Theme.SidebarTransparency or 0, BorderSizePixel = 0, RimuruThemeRole = "Sidebar", Size = UDim2.new(0, railWidth, 1, 0), ZIndex = 3}, root)
@@ -1757,9 +1734,7 @@
           self.Outer.Visible = true
           if self.RootScale then self.RootScale.Scale = 1 end
           if self.OuterScale then self.OuterScale.Scale = 1 end
-          self:_animateOverlay(self.Root, false, true)
-          self:_animateOverlay(self.Outer, false, true)
-           local minimizeInfo = TweenInfo.new(.14, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+           local minimizeInfo = TweenInfo.new(.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
           self.MinimizeScaleTween = TweenService:Create(self.RootScale, minimizeInfo, {Scale = .82})
           self.MinimizeOuterScaleTween = TweenService:Create(self.OuterScale, minimizeInfo, {Scale = .82})
           local scaleTween = self.MinimizeScaleTween
@@ -1781,9 +1756,7 @@
       if wasAttached then
           if self.RootScale then self.RootScale.Scale = .82 end
           if self.OuterScale then self.OuterScale.Scale = .82 end
-           self:_animateOverlay(self.Root, true, true)
-           self:_animateOverlay(self.Outer, true, true)
-           local restoreInfo = TweenInfo.new(.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+           local restoreInfo = TweenInfo.new(.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
           self.MinimizeScaleTween = TweenService:Create(self.RootScale, restoreInfo, {Scale = 1})
           self.MinimizeOuterScaleTween = TweenService:Create(self.OuterScale, restoreInfo, {Scale = 1})
           self.MinimizeScaleTween:Play()
@@ -1833,21 +1806,46 @@
   end
   function Window:SelectTab(tab)
       self.ActiveTab = tab; self.Page.Text = tab.Name
+       self.TabVisualTweens = self.TabVisualTweens or {}
+       local tabTweenInfo = TweenInfo.new(.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
        for _, candidate in ipairs(self.Tabs) do
             local active = candidate == tab
             candidate.Button.Active = not active
             candidate.Button.Selectable = not active
             candidate.Button:SetAttribute("RimuruActiveTab", active)
-            candidate.Button.BackgroundColor3 = active and Theme.Selected or Theme.Surface
-            candidate.Button.BackgroundTransparency = Theme.SurfaceTransparency or 0
+            if self.TabVisualTweens[candidate] then
+                for _, tween in ipairs(self.TabVisualTweens[candidate]) do pcall(function() tween:Cancel() end) end
+            end
+            local visualTweens = {}
+            self.TabVisualTweens[candidate] = visualTweens
+            local function play(object, properties)
+                if not object or not object.Parent then return end
+                local tween = TweenService:Create(object, tabTweenInfo, properties)
+                visualTweens[#visualTweens + 1] = tween
+                tween:Play()
+            end
+            play(candidate.Button, {
+                BackgroundColor3 = active and Theme.Selected or Theme.Surface,
+                BackgroundTransparency = Theme.SurfaceTransparency or 0,
+            })
            if active then
                if candidate.ActivateConnection then candidate.ActivateConnection:Disconnect(); candidate.ActivateConnection = nil end
            elseif not candidate.ActivateConnection and candidate.ActivateTab then
                candidate.ActivateConnection = candidate.Button.MouseButton1Click:Connect(candidate.ActivateTab)
            end
-          candidate.TextLabel.TextColor3 = active and Theme.Text or Theme.Muted
-          if candidate.TabStroke then candidate.TabStroke.Transparency = active and 0 or 1 end
-          SetIconColor(candidate.IconLabel, active and Theme.Text or Theme.Muted)
+          play(candidate.TextLabel, {TextColor3 = active and Theme.Text or Theme.Muted})
+          if candidate.TabStroke then play(candidate.TabStroke, {Transparency = active and 0 or 1}) end
+          if candidate.IconLabel then
+              local iconColour = active and Theme.Text or Theme.Muted
+              if candidate.IconLabel:IsA("ImageLabel") then play(candidate.IconLabel, {ImageColor3 = iconColour}) end
+              for _, iconPart in ipairs(candidate.IconLabel:GetDescendants()) do
+                  if iconPart:IsA("UIStroke") then
+                      play(iconPart, {Color = iconColour})
+                  elseif iconPart:IsA("GuiObject") and iconPart:GetAttribute("RimuruIconPart") then
+                      play(iconPart, {BackgroundColor3 = iconColour})
+                  end
+              end
+          end
           if candidate.Container then candidate.Container.Visible = active end
       end
   end
@@ -1893,18 +1891,7 @@ function Window:Destroy()
       if self.PendingKeybind then self.PendingKeybind.Cancel(); self.PendingKeybind = nil end
       if self.PopupInput then self.PopupInput:Disconnect(); self.PopupInput = nil end
       if self.MenuInputAction then ContextActionService:UnbindAction(self.MenuInputAction); self.MenuInputAction = nil end
-       if self.UiMouseConnection then self.UiMouseConnection:Disconnect(); self.UiMouseConnection = nil end
-       if self.UiMouseBindName then pcall(function() RunService:UnbindFromRenderStep(self.UiMouseBindName) end); self.UiMouseBindName = nil end
       if self.SideMouseConnection then self.SideMouseConnection:Disconnect(); self.SideMouseConnection = nil end
-       if self.UiMouseWasOpen and self.UiMouseBehavior ~= nil then
-           UIS.MouseBehavior = self.UiMouseBehavior
-      end
-      if self.UiMouseIconEnabled ~= nil then
-          UIS.MouseIconEnabled = self.UiMouseIconEnabled
-          self.UiMouseBehavior = nil
-          self.UiMouseIconEnabled = nil
-      end
-      self.UiMouseWasOpen = false
     if self.KeybindOverlay and self.KeybindOverlay.DragTween then self.KeybindOverlay.DragTween:Cancel(); self.KeybindOverlay.DragTween = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragOuterTween then self.KeybindOverlay.DragOuterTween:Cancel(); self.KeybindOverlay.DragOuterTween = nil end
     if self.KeybindOverlay and self.KeybindOverlay.DragConnections then
