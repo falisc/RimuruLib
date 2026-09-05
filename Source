@@ -951,10 +951,17 @@
       fade(state.Image, "ImageTransparency")
       fade(state.Stroke, "Transparency")
       fade(state.ScrollBar, "ScrollBarImageTransparency")
-      local positionTween = TweenService:Create(panel, info, {Position = targetPosition})
-      table.insert(state.Tweens, positionTween); positionTween:Play()
+      local completionTween
+      if slide == false then
+          -- Fade-only panels use the same keybind animation exactly: no
+          -- hidden position tween competing with the visual fade.
+          completionTween = state.Tweens[#state.Tweens]
+      else
+          completionTween = TweenService:Create(panel, info, {Position = targetPosition})
+          table.insert(state.Tweens, completionTween); completionTween:Play()
+      end
       if not visible then
-          positionTween.Completed:Connect(function()
+          completionTween.Completed:Connect(function()
               if state.Serial ~= transitionSerial then return end
               state.Completed = true
               local hideDelay = 0
@@ -963,7 +970,7 @@
               end)
           end)
       else
-          positionTween.Completed:Connect(function()
+          completionTween.Completed:Connect(function()
               if state.Serial == transitionSerial then state.Completed = true end
           end)
       end
