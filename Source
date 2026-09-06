@@ -1874,9 +1874,18 @@
       -- With the floating island disabled, the minimized window itself is the
       -- compact header. Keep its CanvasGroup visible instead of fading the
       -- entire surface out.
-      local keepCompactSurface = nextMinimized and not attached
-      self:_animateOverlay(self.Root, keepCompactSurface or not nextMinimized, false, false)
-      self:_animateOverlay(self.Outer, keepCompactSurface or not nextMinimized, false, false)
+      local keepCompactSurface = not attached
+      if keepCompactSurface then
+          -- The size/position tween is the compact transition. Do not run the
+          -- generic overlay animator here because it restores its cached
+          -- normal position and causes a visible teleport/flicker.
+          self.Root.GroupTransparency = 0
+          self.Root.Visible = true
+          self.Outer.Visible = true
+      else
+          self:_animateOverlay(self.Root, not nextMinimized, false, false)
+          self:_animateOverlay(self.Outer, not nextMinimized, false, false)
+      end
       if nextMinimized then
           task.delay(.18, function()
               if self.Minimized and not self.MinimizedAttached then
