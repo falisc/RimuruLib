@@ -1028,6 +1028,9 @@
                elseif role == "FloatingIsland" then
                    object.BackgroundColor3 = Theme.Surface
                    object.BackgroundTransparency = .5
+               elseif role == "CompactMinimizedSurface" then
+                   object.BackgroundColor3 = Theme.Surface
+                   object.BackgroundTransparency = Theme.WindowTransparency or 0
                elseif role == "Surface" or role == "FloatingSurface" then
                    object.BackgroundColor3 = Theme.Surface
                    object.BackgroundTransparency = Theme.SurfaceTransparency or 0
@@ -1826,7 +1829,7 @@
        self.MinimizedHeight = 58
        self.MinimizedAttached = attached
        local minimizedSurface = nextMinimized and not attached
-       self.Root:SetAttribute("RimuruThemeRole", minimizedSurface and "FloatingSurface" or "WindowBackground")
+       self.Root:SetAttribute("RimuruThemeRole", minimizedSurface and "CompactMinimizedSurface" or "WindowBackground")
        self.Root.BackgroundColor3 = minimizedSurface and Theme.Surface or Theme.Background
        self.Root.BackgroundTransparency = minimizedSurface and (Theme.WindowTransparency or 0) or (Theme.WindowTransparency or 0)
         self:_refreshAtmosphere()
