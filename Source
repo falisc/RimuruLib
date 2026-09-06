@@ -519,7 +519,7 @@
       local screensaver = self.Atmosphere.Screensaver
       if screensaver then
           local palette = ThemePalettes[self.ThemeName] or RimuruDark
-          screensaver.Visible = self.ScreensaverEnabled == true and palette.BackgroundImage ~= "" and screensaver.Image ~= ""
+          screensaver.Visible = active and self.ScreensaverEnabled == true and palette.BackgroundImage ~= "" and screensaver.Image ~= ""
       end
   end
 
@@ -1096,6 +1096,7 @@
   function Window:SetKeybindOverlayVisible(value)
       if not self.KeybindOverlay then return end
       value = value == true
+      self.KeybindOverlayEnabled = value
       if value then self:_refreshKeybindOverlay() end
       -- Keep the panel and outline on the same fade-only timeline; do not
       -- slide or rebuild the rows while the overlay is closing.
@@ -1270,14 +1271,14 @@
        self.KeybindOverlay = {Panel = keybindPanel, Outer = keybindOutline, List = keybindList}
       local dragging, dragStart, panelStart = false, nil, nil
       keybindPanel.InputBegan:Connect(function(input)
-          if input.UserInputType == Enum.UserInputType.MouseButton1 then
+          if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
               dragging = true
               dragStart = input.Position
               panelStart = Vector2.new(keybindPanel.Position.X.Offset, keybindPanel.Position.Y.Offset)
           end
       end)
       local dragChanged = UIS.InputChanged:Connect(function(input)
-          if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+          if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
               local delta = input.Position - dragStart
               local target = UDim2.fromOffset(math.floor(panelStart.X + delta.X), math.floor(panelStart.Y + delta.Y))
               if self.KeybindOverlay.DragTween then self.KeybindOverlay.DragTween:Cancel() end
@@ -1291,7 +1292,7 @@
           end
       end)
       local dragEnded = UIS.InputEnded:Connect(function(input)
-          if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+          if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
       end)
       self.KeybindOverlay.DragConnections = {dragChanged, dragEnded}
       self:SetKeybindOverlayVisible(true)
@@ -1798,6 +1799,7 @@
               if self.Watermark then self.Watermark.Visible = false end
               if self.WatermarkOutline then self.WatermarkOutline.Visible = false end
               if self.KeybindOverlay then self.KeybindOverlay.Panel.Visible = false; if self.KeybindOverlay.Outer then self.KeybindOverlay.Outer.Visible = false end end
+              self:_refreshAtmosphere()
               if self.MobileMiniButton then self.MobileMiniButton.Visible = true end
               if self.MobileMiniOutline then self.MobileMiniOutline.Visible = true end
           else
@@ -1806,7 +1808,8 @@
               if self.MobileMiniOutline then self.MobileMiniOutline.Visible = false end
               if self.Watermark and self.FloatingIslandEnabled then self.Watermark.Visible = true end
               if self.WatermarkOutline and self.FloatingIslandEnabled then self.WatermarkOutline.Visible = true end
-              if self.KeybindOverlay then self.KeybindOverlay.Panel.Visible = true; if self.KeybindOverlay.Outer then self.KeybindOverlay.Outer.Visible = true end end
+              if self.KeybindOverlay and self.KeybindOverlayEnabled == true then self.KeybindOverlay.Panel.Visible = true; if self.KeybindOverlay.Outer then self.KeybindOverlay.Outer.Visible = true end end
+              self:_refreshAtmosphere()
               self:_resetTabVisuals()
           end
           return
