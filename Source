@@ -1871,8 +1871,12 @@
       self.WindowTween = TweenService:Create(self.Root, tweenInfo, {Position = targetPosition, Size = UDim2.fromOffset(self.NormalWidth, targetHeight)})
       self.OuterTween = TweenService:Create(self.Outer, tweenInfo, {Position = targetPosition, Size = UDim2.fromOffset(self.NormalWidth + 8, targetHeight + 8)})
       self.WindowTween:Play(); self.OuterTween:Play()
-      self:_animateOverlay(self.Root, not nextMinimized, false, false)
-      self:_animateOverlay(self.Outer, not nextMinimized, false, false)
+      -- With the floating island disabled, the minimized window itself is the
+      -- compact header. Keep its CanvasGroup visible instead of fading the
+      -- entire surface out.
+      local keepCompactSurface = nextMinimized and not attached
+      self:_animateOverlay(self.Root, keepCompactSurface or not nextMinimized, false, false)
+      self:_animateOverlay(self.Outer, keepCompactSurface or not nextMinimized, false, false)
       if nextMinimized then
           task.delay(.18, function()
               if self.Minimized and not self.MinimizedAttached then
