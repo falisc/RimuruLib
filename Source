@@ -1198,10 +1198,10 @@
       -- Touch-only clients use a compact, draggable logo launcher instead of
       -- the desktop minimized floating-island controls.
       if self.IsMobile then
-          local miniOutline = OutlinePanel(gui, {Active = false, BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(64, 64), ZIndex = 59}, 18)
-          local mini = New("TextButton", {Active = true, AutoButtonColor = false, BackgroundColor3 = Theme.Surface, BackgroundTransparency = Theme.SurfaceTransparency or .5, BorderSizePixel = 0, ClipsDescendants = true, Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(56, 56), Text = "", ZIndex = 60, RimuruThemeRole = "FloatingIsland", Visible = false}, gui)
-          Corner(mini, 16); Outline(mini, Theme.Divider)
-          local miniLogo = MakeIcon(mini, "logo", nil, 46, false); miniLogo.AnchorPoint = Vector2.new(.5, .5); miniLogo.Position = UDim2.fromScale(.5, .5); miniLogo.ZIndex = 61
+          local miniOutline = OutlinePanel(gui, {Active = false, BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(52, 52), Visible = false, ZIndex = 59}, 15)
+          local mini = New("TextButton", {Active = true, AutoButtonColor = false, BackgroundColor3 = Theme.Surface, BackgroundTransparency = Theme.SurfaceTransparency or .5, BorderSizePixel = 0, ClipsDescendants = true, Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(44, 44), Text = "", ZIndex = 60, RimuruThemeRole = "FloatingIsland", Visible = false}, gui)
+          Corner(mini, 13); Outline(mini, Theme.Divider)
+          local miniLogo = MakeIcon(mini, "logo", nil, 36, false); miniLogo.AnchorPoint = Vector2.new(.5, .5); miniLogo.Position = UDim2.fromScale(.5, .5); miniLogo.ZIndex = 61
           self.MobileMiniButton, self.MobileMiniOutline, self.MobileMiniDragConnections = mini, miniOutline, {}
           local dragging, moved, dragStart, startPosition = false, false, nil, nil
           mini.InputBegan:Connect(function(input)
@@ -1406,7 +1406,7 @@
        local minimize = New("TextButton", {AutoButtonColor = false, BackgroundColor3 = Theme.Card, BorderSizePixel = 0, ClipsDescendants = true, Position = UDim2.new(1, -58, 0, 2), Size = UDim2.fromOffset(24, 26), Text = ""}, header)
        local close = New("TextButton", {AutoButtonColor = false, BackgroundColor3 = Theme.Card, BorderSizePixel = 0, ClipsDescendants = true, Position = UDim2.new(1, -26, 0, 2), Size = UDim2.fromOffset(24, 26), Text = ""}, header)
        Corner(minimize, 13); Corner(close, 13); Outline(minimize, Theme.Divider); Outline(close, Theme.Divider)
-       minimize.Visible = not mobileMode
+       minimize.Visible = true
       local minimizeIcon = MakeIcon(minimize, "minimize", nil); minimizeIcon.Position = UDim2.fromOffset(3, 5)
       local closeIcon = MakeIcon(close, "close", nil); closeIcon.Position = UDim2.fromOffset(3, 5)
       local headerDivider = New("Frame", {BackgroundColor3 = Theme.Divider, BorderSizePixel = 0, Position = UDim2.new(0, 20, 0, 47), Size = UDim2.new(1, -32, 0, 1)}, body)
