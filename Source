@@ -1029,7 +1029,7 @@
                    object.BackgroundColor3 = Theme.Surface
                    object.BackgroundTransparency = .5
                elseif role == "CompactMinimizedSurface" then
-                   object.BackgroundColor3 = Theme.Surface
+                   object.BackgroundColor3 = Theme.Background
                    object.BackgroundTransparency = 0
                elseif role == "Surface" or role == "FloatingSurface" then
                    object.BackgroundColor3 = Theme.Surface
@@ -1078,6 +1078,14 @@
           end
       end
       if self.Outer then self.Outer.BackgroundColor3 = Theme.Border end
+      if self.Watermark then
+          self.Watermark.BackgroundColor3 = Theme.Surface
+          self.Watermark.BackgroundTransparency = .5
+      end
+      if self.KeybindOverlay and self.KeybindOverlay.Panel then
+          self.KeybindOverlay.Panel.BackgroundColor3 = Theme.Surface
+          self.KeybindOverlay.Panel.BackgroundTransparency = .5
+      end
       self.ActiveThemePalette = copyTheme(palette)
       if self.Atmosphere then
           local background = self.Atmosphere.ThemeBackground
@@ -1830,7 +1838,7 @@
        self.MinimizedAttached = attached
        local minimizedSurface = nextMinimized and not attached
        self.Root:SetAttribute("RimuruThemeRole", minimizedSurface and "CompactMinimizedSurface" or "WindowBackground")
-       self.Root.BackgroundColor3 = minimizedSurface and Theme.Surface or Theme.Background
+       self.Root.BackgroundColor3 = minimizedSurface and Theme.Background or Theme.Background
        self.Root.BackgroundTransparency = minimizedSurface and 0 or (Theme.WindowTransparency or 0)
         self:_refreshAtmosphere()
       if self.MinimizeScaleTween then self.MinimizeScaleTween:Cancel(); self.MinimizeScaleTween = nil end
