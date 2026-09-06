@@ -1030,7 +1030,7 @@
                    object.BackgroundTransparency = .5
                elseif role == "CompactMinimizedSurface" then
                    object.BackgroundColor3 = Theme.Surface
-                   object.BackgroundTransparency = Theme.WindowTransparency or 0
+                   object.BackgroundTransparency = 0
                elseif role == "Surface" or role == "FloatingSurface" then
                    object.BackgroundColor3 = Theme.Surface
                    object.BackgroundTransparency = Theme.SurfaceTransparency or 0
@@ -1831,7 +1831,7 @@
        local minimizedSurface = nextMinimized and not attached
        self.Root:SetAttribute("RimuruThemeRole", minimizedSurface and "CompactMinimizedSurface" or "WindowBackground")
        self.Root.BackgroundColor3 = minimizedSurface and Theme.Surface or Theme.Background
-       self.Root.BackgroundTransparency = minimizedSurface and (Theme.WindowTransparency or 0) or (Theme.WindowTransparency or 0)
+       self.Root.BackgroundTransparency = minimizedSurface and 0 or (Theme.WindowTransparency or 0)
         self:_refreshAtmosphere()
       if self.MinimizeScaleTween then self.MinimizeScaleTween:Cancel(); self.MinimizeScaleTween = nil end
       if self.MinimizeOuterScaleTween then self.MinimizeOuterScaleTween:Cancel(); self.MinimizeOuterScaleTween = nil end
